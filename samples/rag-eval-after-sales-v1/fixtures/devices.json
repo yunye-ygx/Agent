@@ -1,0 +1,6 @@
+[
+  {"device_id":"SIM-100-A","model":"NX100","firmware":"1.6.0","network_mode":"USB","purchase_date":"2026-08-01","warranty_status":"pending_review"},
+  {"device_id":"SIM-100-B","model":"NX100","firmware":"1.4.2","network_mode":"USB","purchase_date":"2026-04-01","warranty_status":"pending_review"},
+  {"device_id":"SIM-200-A","model":"NX200","firmware":"2.1.0","network_mode":"static_ip","purchase_date":"2026-08-10","warranty_status":"pending_review"},
+  {"device_id":"SIM-100-C","model":"NX100","firmware":null,"network_mode":"USB","purchase_date":null,"warranty_status":"unknown"}
+]

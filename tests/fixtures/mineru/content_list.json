@@ -1,0 +1,27 @@
+[
+  {
+    "type": "title",
+    "text": "Leave Policy",
+    "page_idx": 0,
+    "bbox": [10, 20, 500, 60]
+  },
+  {
+    "type": "text",
+    "text": "Employees can request leave through the internal portal.",
+    "page_idx": 0,
+    "bbox": [10, 80, 500, 120]
+  },
+  {
+    "type": "table",
+    "table_body": "| Type | Notice |\n| --- | --- |\n| Annual | 3 days |",
+    "page_idx": 1,
+    "bbox": [10, 20, 500, 180]
+  },
+  {
+    "type": "image",
+    "img_path": "images/figure-1.png",
+    "img_caption": ["Approval flow"],
+    "page_idx": 1,
+    "bbox": [10, 200, 500, 500]
+  }
+]

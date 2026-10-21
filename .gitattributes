@@ -1,0 +1,6 @@
+# Preserve binary samples byte-for-byte, including PDFs without NUL bytes.
+*.pdf binary
+*.png binary
+
+# Markdown uses two trailing spaces for intentional line breaks.
+*.md whitespace=-blank-at-eol
