@@ -91,7 +91,9 @@ async def upload_document(
     file: UploadFile = File(...),
     session: AsyncSession = Depends(get_mysql_session),
 ) -> DocumentResponse:
-    knowledge_base = await repository.get_knowledge_base(session, knowledge_base_id)
+    # Serialize uploads with knowledge-base deletion; a delete tombstone must
+    # not miss a document whose source object is being uploaded concurrently.
+    knowledge_base = await repository.get_knowledge_base(session, knowledge_base_id, lock=True)
     if knowledge_base is None:
         raise HTTPException(status_code=404, detail="知识库不存在")
     content = await file.read(settings.chunking_max_file_bytes + 1)

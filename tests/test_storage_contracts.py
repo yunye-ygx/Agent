@@ -1,8 +1,10 @@
+from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import pytest
 
 from app.storage.elasticsearch_chunks import ChunkStore, build_chunk_source
+from app.storage.minio_storage import MinioStorage
 
 
 def test_chunk_source_has_single_task_and_run_ownership():
@@ -52,3 +54,35 @@ async def test_cleanup_uses_scoped_run_deletion_and_surfaces_partial_failure():
     client.delete_by_query.return_value = {"failures": ["failed shard"]}
     with pytest.raises(RuntimeError):
         await store.delete_run_chunks(kb_id="kb", doc_id="doc", run_id="run")
+
+
+@pytest.mark.asyncio
+async def test_knowledge_base_chunk_cleanup_is_scoped_and_surfaces_partial_failure():
+    client = AsyncMock()
+    client.delete_by_query.return_value = {"failures": [], "version_conflicts": 0}
+    store = ChunkStore(client=client)
+    await store.delete_knowledge_base_chunks(kb_id="kb")
+    assert client.delete_by_query.call_args.kwargs["query"] == {"term": {"kb_id": "kb"}}
+    client.delete_by_query.return_value = {"timed_out": True}
+    with pytest.raises(RuntimeError):
+        await store.delete_knowledge_base_chunks(kb_id="kb")
+
+
+@pytest.mark.asyncio
+async def test_minio_prefix_cleanup_removes_every_object_recursively():
+    from unittest.mock import Mock
+
+    client = Mock()
+    client.list_objects.return_value = [
+        SimpleNamespace(object_name="kb/doc/source/file.pdf"),
+        SimpleNamespace(object_name="kb/doc/generations/run/blocks.json"),
+    ]
+    storage = MinioStorage(client=client)
+
+    await storage.delete_prefix("files", "kb/doc/")
+
+    client.list_objects.assert_called_once_with("files", prefix="kb/doc/", recursive=True)
+    assert [call.args[1] for call in client.remove_object.call_args_list] == [
+        "kb/doc/source/file.pdf",
+        "kb/doc/generations/run/blocks.json",
+    ]

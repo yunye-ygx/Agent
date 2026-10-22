@@ -13,6 +13,17 @@ def test_frontend_contains_knowledge_base_and_document_workflows() -> None:
     assert "/api/v1/documents/" in script
 
 
+def test_knowledge_base_list_supports_batch_delete_and_refetches_after_acceptance() -> None:
+    html = (ROOT / "app" / "web" / "index.html").read_text(encoding="utf-8")
+    script = (ROOT / "app" / "web" / "app.js").read_text(encoding="utf-8")
+
+    assert 'id="delete-selected-kbs"' in html
+    assert "data-select-all-kbs" in script
+    assert "data-select-kb" in script
+    assert "/api/v1/knowledge-bases/batch-delete" in script
+    assert "await loadKnowledgeBases()" in script
+
+
 def test_document_table_owns_parse_progress_and_delete_actions() -> None:
     html = (ROOT / "app" / "web" / "index.html").read_text(encoding="utf-8")
     script = (ROOT / "app" / "web" / "app.js").read_text(encoding="utf-8")

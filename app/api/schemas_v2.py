@@ -1,12 +1,26 @@
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class KnowledgeBaseCreate(BaseModel):
     name: str = Field(min_length=1, max_length=200)
     description: str | None = Field(default=None, max_length=1000)
+
+
+class KnowledgeBaseUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(min_length=1, max_length=200)
+
+    @field_validator("name")
+    @classmethod
+    def nonblank_name(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("知识库名称不能为空")
+        return value
 
 
 class KnowledgeBaseResponse(BaseModel):
@@ -17,6 +31,21 @@ class KnowledgeBaseResponse(BaseModel):
     document_count: int
     created_at: datetime | None
     updated_at: datetime | None
+
+
+class KnowledgeBaseBatchDelete(BaseModel):
+    ids: list[str] = Field(min_length=1, max_length=100)
+    confirm_with_documents: bool = False
+
+
+class KnowledgeBaseDeleteSkipped(BaseModel):
+    id: str
+    reason: str
+
+
+class KnowledgeBaseBatchDeleteResponse(BaseModel):
+    accepted: list[str]
+    skipped: list[KnowledgeBaseDeleteSkipped]
 
 
 class TaskRangeResponse(BaseModel):

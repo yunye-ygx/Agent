@@ -1,6 +1,6 @@
 const state = {
   knowledgeBases: [], knowledgeBase: null, document: null, chunks: [], documents: [],
-  modelCatalog: [], modelConfigurations: [], editingModel: null, poller: null,
+  modelCatalog: [], modelConfigurations: [], editingModel: null, editingKnowledgeBase: null, poller: null, selectedKnowledgeBaseIds: new Set(),
 };
 const $ = (id) => document.getElementById(id);
 const request = async (url, options = {}) => {
@@ -22,9 +22,79 @@ function showView(name) {
 async function loadKnowledgeBases() { state.knowledgeBases = await request('/api/v1/knowledge-bases'); renderKnowledgeBases(); }
 function renderKnowledgeBases() {
   const node = $('kb-list');
-  if (!state.knowledgeBases.length) { node.innerHTML = '<div class="empty-state">还没有知识库，先创建一个吧。</div>'; return; }
-  node.innerHTML = `<table class="data-table"><thead><tr><th>名称</th><th>描述</th><th>文档数</th><th>更新时间</th><th></th></tr></thead><tbody>${state.knowledgeBases.map((kb) => `<tr><td><button class="link-button" data-open-kb="${kb.id}">${escapeHtml(kb.name)}</button></td><td>${escapeHtml(kb.description || '—')}</td><td>${kb.document_count}</td><td>${formatDate(kb.updated_at)}</td><td><button class="ghost-button" data-open-kb="${kb.id}">进入</button></td></tr>`).join('')}</tbody></table>`;
+  state.selectedKnowledgeBaseIds = new Set([...state.selectedKnowledgeBaseIds].filter((id) => state.knowledgeBases.some((kb) => kb.id === id)));
+  if (!state.knowledgeBases.length) { node.innerHTML = '<div class="empty-state">还没有知识库，先创建一个吧。</div>'; updateKnowledgeBaseSelection(); return; }
+  node.innerHTML = `<table class="data-table"><thead><tr><th><input type="checkbox" data-select-all-kbs aria-label="全选知识库"></th><th>名称</th><th>描述</th><th>文档数</th><th>更新时间</th><th>操作</th></tr></thead><tbody>${state.knowledgeBases.map((kb) => `<tr><td><input type="checkbox" data-select-kb="${escapeHtml(kb.id)}" aria-label="选择 ${escapeHtml(kb.name)}" ${state.selectedKnowledgeBaseIds.has(kb.id) ? 'checked' : ''}></td><td><button class="link-button" data-open-kb="${escapeHtml(kb.id)}">${escapeHtml(kb.name)}</button></td><td>${escapeHtml(kb.description || '—')}</td><td>${kb.document_count}</td><td>${formatDate(kb.updated_at)}</td><td><div class="kb-actions"><button class="ghost-button" data-rename-kb="${escapeHtml(kb.id)}">修改名称</button><button class="danger-button" data-delete-kb="${escapeHtml(kb.id)}">删除</button><button class="ghost-button" data-open-kb="${escapeHtml(kb.id)}">进入</button></div></td></tr>`).join('')}</tbody></table>`;
   node.querySelectorAll('[data-open-kb]').forEach((button) => button.addEventListener('click', () => openKnowledgeBase(button.dataset.openKb)));
+  node.querySelectorAll('[data-rename-kb]').forEach((button) => button.addEventListener('click', () => openKnowledgeBaseRename(button.dataset.renameKb)));
+  node.querySelectorAll('[data-delete-kb]').forEach((button) => button.addEventListener('click', () => deleteKnowledgeBases([button.dataset.deleteKb])));
+  node.querySelectorAll('[data-select-kb]').forEach((checkbox) => checkbox.addEventListener('change', () => {
+    if (checkbox.checked) state.selectedKnowledgeBaseIds.add(checkbox.dataset.selectKb);
+    else state.selectedKnowledgeBaseIds.delete(checkbox.dataset.selectKb);
+    updateKnowledgeBaseSelection();
+  }));
+  node.querySelector('[data-select-all-kbs]').addEventListener('change', (event) => {
+    state.selectedKnowledgeBaseIds = new Set(event.target.checked ? state.knowledgeBases.map((kb) => kb.id) : []);
+    node.querySelectorAll('[data-select-kb]').forEach((checkbox) => { checkbox.checked = event.target.checked; });
+    updateKnowledgeBaseSelection();
+  });
+  updateKnowledgeBaseSelection();
+}
+function updateKnowledgeBaseSelection() {
+  const button = $('delete-selected-kbs');
+  button.disabled = state.selectedKnowledgeBaseIds.size === 0;
+  button.textContent = `删除所选（${state.selectedKnowledgeBaseIds.size}）`;
+  const selectAll = document.querySelector('[data-select-all-kbs]');
+  if (selectAll) {
+    selectAll.checked = state.knowledgeBases.length > 0 && state.selectedKnowledgeBaseIds.size === state.knowledgeBases.length;
+    selectAll.indeterminate = state.selectedKnowledgeBaseIds.size > 0 && !selectAll.checked;
+  }
+}
+function openKnowledgeBaseRename(id) {
+  const kb = state.knowledgeBases.find((item) => item.id === id);
+  if (!kb || kb.status !== 'ACTIVE') return;
+  state.editingKnowledgeBase = kb;
+  $('rename-kb-name').value = kb.name;
+  $('rename-kb-dialog').showModal();
+  $('rename-kb-name').focus();
+  $('rename-kb-name').select();
+}
+async function deleteKnowledgeBases(ids, confirmed = false) {
+  const selected = state.knowledgeBases.filter((item) => ids.includes(item.id));
+  if (!selected.length) return;
+  try {
+    const response = await fetch('/api/v1/knowledge-bases/batch-delete', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids, confirm_with_documents: confirmed }),
+    });
+    if (response.status === 409) {
+      const body = await response.json();
+      const detail = body.detail;
+      if (!confirmed && detail?.code === 'CONFIRMATION_REQUIRED') {
+        const items = detail.knowledge_bases || selected.map((kb) => ({ name: kb.name, document_count: kb.document_count }));
+        const summary = items.map((item) => `“${item.name}”（${item.document_count} 个文件）`).join('、');
+        const skipped = detail.skipped?.length ? `\n\n${detail.skipped.length} 个知识库因正在解析会被跳过。` : '';
+        const accepted = window.confirm(`确认永久删除以下知识库及其文件、解析记录、Chunk 和检索实验数据吗？\n${summary}${skipped}`);
+        if (accepted) await deleteKnowledgeBases(ids, true);
+        return;
+      }
+      throw new Error(typeof detail === 'string' ? detail : '知识库正在解析或当前状态不允许删除');
+    }
+    if (!response.ok) {
+      let detail = '删除知识库失败';
+      try { detail = (await response.json()).detail || detail; } catch {}
+      throw new Error(typeof detail === 'string' ? detail : '删除知识库失败');
+    }
+    const result = await response.json();
+    state.selectedKnowledgeBaseIds.clear();
+    const skipped = result.skipped || [];
+    const acceptedCount = result.accepted?.length || 0;
+    const skippedSummary = skipped.map((item) => `${state.knowledgeBases.find((kb) => kb.id === item.id)?.name || item.id}：${item.reason}`).join('；');
+    toast(`${acceptedCount} 个知识库已加入后台删除队列${skipped.length ? `；跳过 ${skipped.length} 个：${skippedSummary}` : ''}`);
+    await loadKnowledgeBases();
+  } catch (error) {
+    toast(error.message);
+  }
 }
 async function openKnowledgeBase(id) {
   state.knowledgeBase = await request(`/api/v1/knowledge-bases/${id}`); $('kb-list-card').classList.add('hidden'); $('kb-detail').classList.remove('hidden'); $('kb-title').textContent = state.knowledgeBase.name; $('kb-description').textContent = state.knowledgeBase.description || '暂无描述'; await loadDocuments();
@@ -118,4 +188,6 @@ function escapeHtml(value) { return String(value).replace(/[&<>'"]/g, (c) => ({ 
 
 document.querySelectorAll('.nav-item').forEach((button) => button.addEventListener('click', () => { showView(button.dataset.view); if (button.dataset.view === 'models' && !state.modelCatalog.length) loadModelSettings(); }));
 $('new-kb-button').addEventListener('click', () => $('new-kb-dialog').showModal()); $('refresh-kb').addEventListener('click', () => loadKnowledgeBases().catch((error) => toast(error.message))); $('refresh-models').addEventListener('click', () => loadModelSettings()); $('new-model-button').addEventListener('click', () => openModelDialog()); $('model-config-form').addEventListener('submit', saveModelConfiguration); $('model-provider').addEventListener('change', () => { applyProviderPreset(true); syncCustomModelInputs(); }); $('model-chat-model').addEventListener('change', syncCustomModelInputs); $('model-embedding-model').addEventListener('change', syncCustomModelInputs);
+$('rename-kb-form').addEventListener('submit', async (event) => { event.preventDefault(); if (event.submitter?.value === 'cancel') { $('rename-kb-dialog').close(); state.editingKnowledgeBase = null; return; } const kb = state.editingKnowledgeBase; if (!kb) return; try { await request(`/api/v1/knowledge-bases/${encodeURIComponent(kb.id)}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: $('rename-kb-name').value }) }); $('rename-kb-dialog').close(); state.editingKnowledgeBase = null; toast('知识库名称已修改'); await loadKnowledgeBases(); } catch (error) { toast(error.message); } });
+$('delete-selected-kbs').addEventListener('click', () => deleteKnowledgeBases([...state.selectedKnowledgeBaseIds]));
 $('new-kb-form').addEventListener('submit', async (event) => { event.preventDefault(); try { await request('/api/v1/knowledge-bases', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: $('kb-name').value, description: $('kb-description-input').value || null }) }); $('new-kb-dialog').close(); $('kb-name').value = ''; $('kb-description-input').value = ''; toast('知识库已创建'); await loadKnowledgeBases(); } catch (error) { toast(error.message); } }); $('document-upload').addEventListener('change', uploadDocument); $('back-to-kbs').addEventListener('click', () => { $('kb-detail').classList.add('hidden'); $('kb-list-card').classList.remove('hidden'); state.knowledgeBase = null; }); $('back-to-documents').addEventListener('click', () => { $('document-detail').classList.add('hidden'); $('kb-detail').classList.remove('hidden'); loadDocuments(); }); $('chat-form').addEventListener('submit', (event) => { event.preventDefault(); toast('聊天后端尚未接入'); }); loadKnowledgeBases().catch((error) => toast(error.message));

@@ -18,6 +18,7 @@ class Base(DeclarativeBase):
 
 class KnowledgeBaseStatus(str, enum.Enum):
     ACTIVE = "ACTIVE"
+    DELETING = "DELETING"
     DELETED = "DELETED"
 
 

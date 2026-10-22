@@ -12,6 +12,7 @@ from app.db.mysql_models import Document, Generation, GenerationStatus, Task, Ta
 from app.db.mysql_session import AsyncSessionFactory
 from app.rag.fingerprint import build_task_chunk_id
 from app.rag.generation_cleanup import GenerationCleanupService
+from app.rag.knowledge_base_deletion import KnowledgeBaseDeletionService
 from app.storage.elasticsearch_chunks import ChunkStore
 
 logger = logging.getLogger(__name__)
@@ -21,6 +22,9 @@ class MaintenanceService:
     def __init__(self, *, session_factory=None, chunk_store=None):
         self.session_factory = session_factory or AsyncSessionFactory
         self.chunk_store = chunk_store or ChunkStore()
+        self.knowledge_base_deletion = KnowledgeBaseDeletionService(
+            session_factory=self.session_factory, chunk_store=self.chunk_store
+        )
 
     async def recover(self):
         async with self.session_factory() as session:
@@ -116,6 +120,7 @@ class MaintenanceService:
     async def run_once(self):
         await self.recover()
         await self.publish_ready_runs()
+        await self.knowledge_base_deletion.process_pending()
         async with self.session_factory() as session:
             await GenerationCleanupService(
                 chunk_store=self.chunk_store
