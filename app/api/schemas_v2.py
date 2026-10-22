@@ -155,6 +155,24 @@ class ModelProviderCatalogResponse(BaseModel):
     capabilities: list[str]
 
 
+class ModelDiscoveryRequest(BaseModel):
+    provider_key: str = Field(min_length=1, max_length=64)
+    base_url: str = Field(min_length=1, max_length=512)
+    api_key: str | None = Field(default=None, max_length=2048)
+    configuration_id: str | None = None
+
+
+class DiscoveredModelResponse(BaseModel):
+    id: str
+    name: str
+    description: str | None = None
+
+
+class ModelDiscoveryResponse(BaseModel):
+    chat_models: list[DiscoveredModelResponse]
+    embedding_models: list[DiscoveredModelResponse]
+
+
 class ModelConfigurationCreate(BaseModel):
     provider_key: str = Field(min_length=1, max_length=64)
     display_name: str = Field(min_length=1, max_length=120)

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>RAG Demo 知识库</title>
   <link rel="stylesheet" href="/static/app.css">
-  <link rel="stylesheet" href="/static/app-model.css">
+  <link rel="stylesheet" href="/static/app-model.css?v=20261022-model-catalog">
   <link rel="stylesheet" href="/static/retrieval.css">
 </head>
 <body>
@@ -54,7 +54,7 @@
         <div>
           <p class="eyebrow">MODEL CONTROL</p>
           <h1 id="models-title">模型配置</h1>
-          <p class="muted">保存供应商连接和模型组合，后续解析、聊天等流程可以按配置 ID 选择。</p>
+          <p class="muted">管理供应商连接和模型组合；检索实验会按已发布文档的 Embedding 模型匹配连接。</p>
         </div>
         <div class="action-row"><button id="refresh-models" class="ghost-button">刷新</button><button id="new-model-button" class="primary-button">新增模型配置</button></div>
       </div>
@@ -65,7 +65,7 @@
         <div class="card-heading"><h2>配置说明</h2><span class="muted">安全边界</span></div>
         <div class="model-note-body">
           <p>API Key 只保存在服务端，页面只显示掩码；编辑已有配置时留空即可保留原密钥。</p>
-          <p>供应商和模型选项由后端目录接口提供。保存后的配置会获得唯一 ID，后续业务可以按 ID 选择，也可以设置一个默认配置。</p>
+          <p>千问模型选项由服务端实时查询百炼模型目录。当前离线建库仍使用环境配置；保存或设为默认不会自动更改已有知识库的向量模型，切换向量模型需要重建知识库。</p>
         </div>
       </div>
     </section>
@@ -73,8 +73,41 @@
   </main>
   <dialog id="new-kb-dialog"><form method="dialog" id="new-kb-form"><div class="dialog-heading"><h2>新建知识库</h2><button value="cancel" class="icon-button" aria-label="关闭">×</button></div><label>名称<input id="kb-name" required maxlength="200"></label><label>描述<textarea id="kb-description-input" maxlength="1000"></textarea></label><div class="dialog-actions"><button value="cancel" class="ghost-button">取消</button><button value="default" class="primary-button">创建</button></div></form></dialog>
   <dialog id="rename-kb-dialog"><form method="dialog" id="rename-kb-form"><div class="dialog-heading"><h2>修改知识库名称</h2><button value="cancel" class="icon-button" aria-label="关闭">×</button></div><label>名称<input id="rename-kb-name" required maxlength="200"></label><div class="dialog-actions"><button value="cancel" class="ghost-button">取消</button><button value="default" class="primary-button">保存</button></div></form></dialog>
-  <dialog id="model-config-dialog"><form method="dialog" id="model-config-form"><div class="dialog-heading"><div><p class="eyebrow">MODEL CONNECTION</p><h2 id="model-dialog-title">新增模型配置</h2></div><button value="cancel" class="icon-button" aria-label="关闭">×</button></div><input id="model-config-id" type="hidden"><label>供应商<select id="model-provider" required></select><small id="model-provider-hint" class="field-hint"></small></label><label>配置名称<input id="model-display-name" required maxlength="120" placeholder="例如：生产智谱 GLM"></label><label>Base URL<input id="model-base-url" required maxlength="512" placeholder="https://..." inputmode="url"></label><label>API Key<input id="model-api-key" maxlength="2048" type="password" autocomplete="new-password" placeholder="编辑时留空则保留原密钥"></label><div class="form-grid"><label>Chat 模型<select id="model-chat-model" required></select></label><label>自定义 Chat 模型<input id="model-chat-custom" class="hidden" maxlength="255" placeholder="输入模型名"></label></div><div class="form-grid"><label>Embedding 模型<select id="model-embedding-model"><option value="">不使用 Embedding</option></select></label><label>自定义 Embedding 模型<input id="model-embedding-custom" class="hidden" maxlength="255" placeholder="输入模型名"></label></div><label>向量维度<input id="model-embedding-dimension" type="number" min="1" max="100000" placeholder="例如：2048"></label><label class="checkbox-label"><input id="model-set-default" type="checkbox"> 保存后设为默认模型</label><div class="dialog-actions"><button value="cancel" class="ghost-button">取消</button><button value="default" class="primary-button" id="save-model-button">保存配置</button></div></form></dialog>
-  <div id="toast" class="toast" role="status"></div><script src="/static/app.js"></script>
+  <dialog id="model-config-dialog" class="model-dialog" aria-labelledby="model-dialog-title">
+    <form method="dialog" id="model-config-form">
+      <header class="model-dialog-header">
+        <div><p class="eyebrow">MODEL CONNECTION</p><h2 id="model-dialog-title">新增模型配置</h2><p class="muted">先配置连接，再从供应商读取模型目录。</p></div>
+        <button value="cancel" class="icon-button" aria-label="关闭" formnovalidate>×</button>
+      </header>
+      <input id="model-config-id" type="hidden">
+      <div class="model-dialog-body">
+        <section class="model-dialog-panel model-connection-panel" aria-labelledby="model-connection-title">
+          <div class="model-section-title"><span class="model-step">01</span><div><h3 id="model-connection-title">连接信息</h3><p>选择供应商并填写调用凭证</p></div></div>
+          <label class="model-field">供应商<select id="model-provider" required></select><small id="model-provider-hint" class="field-hint"></small></label>
+          <label class="model-field">配置名称<input id="model-display-name" required maxlength="120" placeholder="例如：开发环境千问"></label>
+          <label class="model-field">Base URL<input id="model-base-url" required maxlength="512" placeholder="https://..." inputmode="url"></label>
+          <label class="model-field">API Key<input id="model-api-key" maxlength="2048" type="password" autocomplete="new-password" placeholder="输入服务商 API Key"><small class="field-hint">编辑时留空会继续使用已保存的密钥。</small></label>
+          <div class="model-credential-note">模型目录由服务端请求供应商。页面只会显示模型信息，不会读取已保存的完整 API Key。</div>
+        </section>
+        <section class="model-dialog-panel model-choices-panel" aria-labelledby="model-choices-title">
+          <div class="model-section-title model-choices-heading"><span class="model-step">02</span><div><h3 id="model-choices-title">选择模型</h3><p>按当前连接读取可选模型</p></div><button id="model-refresh-models" class="ghost-button" type="button">获取模型</button></div>
+          <p id="model-discovery-status" class="model-discovery-status" role="status" aria-live="polite">填写连接信息后获取模型目录。</p>
+          <label id="model-chat-search-field" class="model-field">搜索文本模型<input id="model-chat-search" type="search" placeholder="按名称或模型 ID 搜索"></label>
+          <label class="model-field"><span id="model-chat-label">Chat 模型</span><select id="model-chat-model" required><option value="">请选择模型</option></select></label>
+          <label id="model-chat-custom-field" class="model-field hidden">手动输入模型 ID<input id="model-chat-custom" maxlength="255" placeholder="例如：qwen-plus"></label>
+          <p id="model-chat-detail" class="model-choice-detail">选择模型后会显示目录说明。</p>
+          <div id="model-embedding-fields" class="model-embedding-fields">
+            <label class="model-field">Embedding 模型<select id="model-embedding-model"><option value="">不使用 Embedding</option></select></label>
+            <label id="model-embedding-custom-field" class="model-field hidden">手动输入 Embedding 模型 ID<input id="model-embedding-custom" maxlength="255" placeholder="例如：text-embedding-v4"></label>
+            <label id="model-embedding-dimension-field" class="model-field">向量维度<input id="model-embedding-dimension" type="number" min="1" max="100000" placeholder="例如：2048"><small class="field-hint">模型目录不提供维度；保存后可用「测试连接」核对实际维度。</small></label>
+          </div>
+          <label class="checkbox-label model-default-choice"><input id="model-set-default" type="checkbox"> 保存后设为默认模型</label>
+        </section>
+      </div>
+      <footer class="model-dialog-footer"><span>模型列表来自供应商实时接口；实际调用权限以连接测试为准。</span><div class="dialog-actions"><button value="cancel" class="ghost-button" formnovalidate>取消</button><button value="default" class="primary-button" id="save-model-button">保存配置</button></div></footer>
+    </form>
+  </dialog>
+  <div id="toast" class="toast" role="status"></div><script src="/static/app.js?v=20261022-model-catalog"></script>
   <script src="/static/retrieval.js"></script>
 </body>
 </html>

@@ -70,3 +70,7 @@ def test_frontend_model_settings_are_persistent_and_switchable() -> None:
     assert "/api/v1/model-providers/catalog" in script
     assert "/api/v1/model-providers/configurations" in script
     assert "api_key_masked" in script
+    assert "/api/v1/model-providers/discover-models" in script
+    assert 'class="model-dialog-body"' in html
+    assert 'id="model-refresh-models"' in html
+    assert 'id="model-discovery-status"' in html

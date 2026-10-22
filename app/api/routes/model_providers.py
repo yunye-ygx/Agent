@@ -7,10 +7,13 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.schemas_v2 import (
+    DiscoveredModelResponse,
     ModelConfigurationCreate,
     ModelConfigurationResponse,
     ModelConfigurationTestResponse,
     ModelConfigurationUpdate,
+    ModelDiscoveryRequest,
+    ModelDiscoveryResponse,
     ModelProviderCatalogResponse,
     ModelProviderResponse,
     ModelProviderTestRequest,
@@ -20,6 +23,7 @@ from app.core.config import settings
 from app.db import mysql_repository as repository
 from app.db.mysql_session import get_mysql_session
 from app.rag.embedding import EmbeddingError, OpenAICompatibleEmbeddingClient
+from app.rag.model_discovery import ModelDiscoveryError, discover_qwen_models
 from app.retrieval.rerank import RerankClient, RerankError
 
 router = APIRouter(prefix="/api/v1/model-providers", tags=["model-providers"])
@@ -34,9 +38,8 @@ PROVIDER_CATALOGS: dict[str, ModelProviderCatalogResponse] = {
         provider_key="qwen",
         display_name="通义千问（百炼）",
         base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
-        chat_models=["qwen-plus"],
-        embedding_models=["text-embedding-v4"],
-        embedding_dimensions={"text-embedding-v4": 2048},
+        chat_models=[],
+        embedding_models=[],
         capabilities=["Chat", "Embedding"],
     ),
     "custom": ModelProviderCatalogResponse(
@@ -97,9 +100,51 @@ def _serialize_configuration(item) -> ModelConfigurationResponse:
 
 @router.get("/catalog", response_model=list[ModelProviderCatalogResponse])
 async def list_provider_catalog() -> list[ModelProviderCatalogResponse]:
-    """Return provider/model choices for the configuration UI."""
+    """Return provider metadata; Qwen model choices come from live discovery."""
 
     return list(PROVIDER_CATALOGS.values())
+
+
+@router.post("/discover-models", response_model=ModelDiscoveryResponse)
+async def discover_models(
+    payload: ModelDiscoveryRequest,
+    session: AsyncSession = Depends(get_mysql_session),
+) -> ModelDiscoveryResponse:
+    if payload.provider_key != "qwen":
+        raise HTTPException(status_code=422, detail="当前只支持实时获取千问模型目录")
+    base_url = payload.base_url.strip().rstrip("/")
+    api_key = (payload.api_key or "").strip()
+    if not api_key and payload.configuration_id:
+        saved = await repository.get_model_configuration(session, payload.configuration_id)
+        if saved is None or saved.provider_key != "qwen":
+            raise HTTPException(status_code=404, detail="千问模型配置不存在")
+        if base_url != saved.base_url.rstrip("/"):
+            raise HTTPException(status_code=422, detail="Base URL 已改变，请填写对应的 API Key 后重新获取")
+        api_key = saved.api_key
+    if (
+        not api_key
+        and not payload.configuration_id
+        and base_url == (settings.llm_base_url or "").rstrip("/")
+    ):
+        api_key = settings.llm_api_key or ""
+    if not api_key:
+        raise HTTPException(status_code=422, detail="请先填写千问 API Key")
+    try:
+        discovered = await discover_qwen_models(base_url, api_key)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except ModelDiscoveryError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+    return ModelDiscoveryResponse(
+        chat_models=[
+            DiscoveredModelResponse(id=item.id, name=item.name, description=item.description)
+            for item in discovered.chat_models
+        ],
+        embedding_models=[
+            DiscoveredModelResponse(id=item.id, name=item.name, description=item.description)
+            for item in discovered.embedding_models
+        ],
+    )
 
 
 @router.get("/configurations", response_model=list[ModelConfigurationResponse])

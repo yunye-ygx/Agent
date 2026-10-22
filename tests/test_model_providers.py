@@ -60,12 +60,11 @@ def test_qwen_provider_exposes_embedding_and_pipeline_status(monkeypatch) -> Non
     assert provider.api_key_masked != "abcd-secret-value-wxyz"
 
 
-def test_provider_catalog_exposes_initial_qwen_choices() -> None:
+def test_provider_catalog_leaves_qwen_model_choices_to_live_discovery() -> None:
     catalog = PROVIDER_CATALOGS["qwen"]
 
-    assert catalog.chat_models == ["qwen-plus"]
-    assert catalog.embedding_models == ["text-embedding-v4"]
-    assert catalog.embedding_dimensions["text-embedding-v4"] == 2048
+    assert catalog.chat_models == []
+    assert catalog.embedding_models == []
 
 
 def test_saved_configuration_response_contract_does_not_include_plain_api_key() -> None:
