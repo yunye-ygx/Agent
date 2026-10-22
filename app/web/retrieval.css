@@ -1,0 +1,29 @@
+.retrieval-layout { display: grid; grid-template-columns: 310px minmax(0, 1fr); gap: 24px; align-items: start; }
+.retrieval-controls { padding: 22px; display: grid; gap: 16px; }
+.retrieval-controls h2, .retrieval-controls p { margin: 0; }
+.retrieval-controls label { display: grid; gap: 7px; font-size: 13px; font-weight: 600; min-width: 0; }
+.retrieval-controls input, .retrieval-controls select, .retrieval-controls textarea { width: 100%; min-width: 0; box-sizing: border-box; padding: 10px; border: 1px solid #d5dce6; border-radius: 7px; background: white; font: inherit; }
+.retrieval-controls textarea { resize: vertical; }
+.retrieval-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.retrieval-controls details .retrieval-fields { margin-top: 14px; }
+.retrieval-controls summary, .retrieval-output summary { cursor: pointer; }
+.retrieval-output { min-width: 0; }
+#retrieval-status { margin: 0 0 16px; padding: 15px 18px; border: 1px solid #d5dce6; border-radius: 10px; background: #f6f8fc; overflow-wrap: anywhere; }
+#retrieval-status.retrieval-error { color: #a52929; border-color: #e6bcbc; background: #fff4f4; }
+.retrieval-report { display: grid; gap: 18px; }
+.retrieval-report .card { padding: 20px; overflow: hidden; }
+.retrieval-report h2 { margin: 0 0 12px; font-size: 17px; }
+.retrieval-summary { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.retrieval-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.retrieval-candidate { border-top: 1px solid #e2e6ec; padding: 15px 0; }
+.retrieval-candidate:first-of-type { border-top: 0; }
+.retrieval-candidate p { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.65; max-height: 340px; overflow-y: auto; }
+.retrieval-report pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; max-height: 420px; overflow-y: auto; }
+.retrieval-table { overflow-x: auto; }
+.retrieval-table table { border-collapse: collapse; width: 100%; font-size: 12px; white-space: nowrap; }
+.retrieval-table th, .retrieval-table td { padding: 11px 9px; text-align: left; border-bottom: 1px solid #e2e6ec; }
+.retrieval-table tr[data-selected="true"] { background: #eef8f3; }
+.retrieval-controls :focus-visible, .retrieval-output :focus-visible { outline: 3px solid #7798e6; outline-offset: 2px; }
+.retrieval-controls button:disabled, .retrieval-actions button:disabled { opacity: .55; cursor: wait; }
+@media (max-width: 980px) { .retrieval-layout { grid-template-columns: 1fr; } .retrieval-controls { grid-template-columns: repeat(2, minmax(0, 1fr)); } .retrieval-controls > h2, .retrieval-controls > p, .retrieval-controls > details, #retrieval-submit { grid-column: 1 / -1; } }
+@media (max-width: 560px) { .retrieval-controls { grid-template-columns: 1fr; padding: 16px; } .topnav { flex-wrap: wrap; } .topbar { height: auto; flex-wrap: wrap; gap: 10px; padding-top: 12px; padding-bottom: 12px; } .retrieval-report .card { padding: 14px; } }

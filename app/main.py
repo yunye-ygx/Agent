@@ -11,6 +11,7 @@ from app.api.routes.documents_v2 import router as documents_router
 from app.api.routes.knowledge_bases import router as knowledge_bases_router
 from app.api.routes.model_providers import router as model_providers_router
 from app.api.routes.retrieval import router as retrieval_router
+from app.api.routes.retrieval_experiments import router as retrieval_experiments_router
 from app.bootstrap import initialize_infrastructure
 from app.core.config import settings
 from app.messaging.outbox_publisher import run_publisher
@@ -73,6 +74,7 @@ app.include_router(knowledge_bases_router)
 app.include_router(model_providers_router)
 app.include_router(documents_router)
 app.include_router(retrieval_router)
+app.include_router(retrieval_experiments_router)
 app.mount("/static", StaticFiles(directory=Path(__file__).parent / "web"), name="static")
 
 

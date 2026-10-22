@@ -20,11 +20,16 @@ from app.core.config import settings
 from app.db import mysql_repository as repository
 from app.db.mysql_session import get_mysql_session
 from app.rag.embedding import EmbeddingError, OpenAICompatibleEmbeddingClient
+from app.retrieval.rerank import RerankClient, RerankError
 
 router = APIRouter(prefix="/api/v1/model-providers", tags=["model-providers"])
 
 
 PROVIDER_CATALOGS: dict[str, ModelProviderCatalogResponse] = {
+    "rerank": ModelProviderCatalogResponse(
+        provider_key="rerank", display_name="Rerank（/rerank 协议）", base_url="",
+        chat_models=[], embedding_models=[], capabilities=["Rerank"],
+    ),
     "qwen": ModelProviderCatalogResponse(
         provider_key="qwen",
         display_name="通义千问（百炼）",
@@ -64,6 +69,8 @@ def _configuration_capabilities(
     provider_key: str, embedding_model: str | None
 ) -> list[str]:
     catalog = PROVIDER_CATALOGS.get(provider_key)
+    if provider_key == "rerank":
+        return ["Rerank"]
     capabilities = list(catalog.capabilities if catalog else ["Chat"])
     if embedding_model and "Embedding" not in capabilities:
         capabilities.append("Embedding")
@@ -209,6 +216,18 @@ async def test_saved_model_configuration(
     if item is None:
         raise HTTPException(status_code=404, detail="模型配置不存在")
     started = time.perf_counter()
+    if item.provider_key == "rerank":
+        try:
+            await RerankClient(item.base_url, item.api_key, item.chat_model).score(
+                request.text, [{"title": "连接测试", "content": request.text}])
+            success, message = True, "Rerank 接口连接成功（分数格式 [0,1]）。"
+        except RerankError as exc:
+            success, message = False, str(exc)
+        return ModelConfigurationTestResponse(
+            configuration_id=item.id, provider=item.provider_key, success=success,
+            message=message, model=item.chat_model,
+            latency_ms=round((time.perf_counter() - started) * 1000),
+        )
     try:
         async with httpx.AsyncClient(base_url=item.base_url.rstrip("/"), timeout=settings.model_timeout_seconds) as client:
             vector_dimension = None

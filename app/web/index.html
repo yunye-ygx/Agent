@@ -6,6 +6,7 @@
   <title>RAG Demo 知识库</title>
   <link rel="stylesheet" href="/static/app.css">
   <link rel="stylesheet" href="/static/app-model.css">
+  <link rel="stylesheet" href="/static/retrieval.css">
 </head>
 <body>
   <header class="topbar">
@@ -13,11 +14,35 @@
     <nav class="topnav" aria-label="主导航">
       <button class="nav-item active" data-view="knowledge">知识库</button>
       <button class="nav-item" data-view="chat">聊天</button>
+      <button class="nav-item" data-view="retrieval">检索实验</button>
       <button class="nav-item" data-view="models">模型配置</button>
     </nav>
     <span class="environment">LOCAL</span>
   </header>
   <main class="shell">
+    <section id="retrieval-view" class="view" aria-labelledby="retrieval-title">
+      <div class="page-heading"><div><p class="eyebrow">RETRIEVAL LAB</p><h1 id="retrieval-title">在线检索实验</h1><p class="muted">检查候选、评分与筛选过程。此功能不调用回答生成模型。</p></div><button id="retrieval-refresh" class="ghost-button">刷新配置</button></div>
+      <div class="retrieval-layout">
+        <form id="retrieval-form" class="card retrieval-controls">
+          <h2>检索条件</h2>
+          <label>知识库<select id="retrieval-kb" required><option value="">正在读取…</option></select></label>
+          <label>文档范围<select id="retrieval-doc"><option value="">全部已发布文档</option></select></label>
+          <label>原始问题<textarea id="retrieval-query" required maxlength="4096" rows="4" placeholder="例如：打印机出现 E03 时如何处理？"></textarea></label>
+          <div class="retrieval-fields"><label>候选 Top K<input id="retrieval-k" type="number" value="50" min="1" max="500" required></label><label>展示 Top N<input id="retrieval-n" type="number" value="5" min="1" max="50" required></label></div>
+          <div class="retrieval-fields"><label>分数阈值<input id="retrieval-threshold" type="number" value="0.2" step="0.01" min="-1" max="1" required></label><label>模型权重<input id="retrieval-weight" type="number" value="0.7" step="0.01" min="0" max="1" required></label></div>
+          <p class="field-hint">模型权重仅用于候选最终评分；关键词权重为 1 − 模型权重。分数不代表答案可信概率。</p>
+          <label>评分模式<select id="retrieval-mode"><option value="auto">自动：有 Rerank 则使用，否则用向量</option><option value="vector">关键词 + 向量 cosine</option><option value="rerank">关键词 + Rerank（必须有配置）</option></select></label>
+          <label>Rerank 配置<select id="retrieval-rerank"><option value="">自动选择可用配置</option></select></label>
+          <details><summary>字段权重与说明</summary><div class="retrieval-fields"><label>标题权重<input id="retrieval-title-weight" type="number" value="2" min="0" max="100" step="0.1" required></label><label>正文权重<input id="retrieval-content-weight" type="number" value="1" min="0" max="100" step="0.1" required></label></div><p class="field-hint">标题使用章节路径，缺失时使用文件名。第一版使用中文单字／英数标识符分词与均匀查询词权重；不会生成问题或关键词。</p></details>
+          <button id="retrieval-submit" class="primary-button" type="submit">运行检索</button>
+          <p class="field-hint">仅限本机单用户。实验快照保留 30 分钟，绑定当前浏览器会话。</p>
+        </form>
+        <div class="retrieval-output">
+          <p id="retrieval-status" role="status" aria-live="polite">选择知识库并输入问题，查看最终结果和完整候选。</p>
+          <div id="retrieval-result" aria-busy="false"></div>
+        </div>
+      </div>
+    </section>
     <section id="knowledge-view" class="view active-view" aria-labelledby="knowledge-title">
       <div class="page-heading"><div><p class="eyebrow">WORKSPACE</p><h1 id="knowledge-title">知识库</h1><p class="muted">管理文件、解析版本和可检索 Chunk。</p></div><button id="new-kb-button" class="primary-button">新建知识库</button></div>
       <div id="kb-list-card" class="card"><div class="card-heading"><h2>知识库列表</h2><button id="refresh-kb" class="ghost-button">刷新</button></div><div id="kb-list" class="table-wrap" aria-live="polite"></div></div>
@@ -49,5 +74,6 @@
   <dialog id="new-kb-dialog"><form method="dialog" id="new-kb-form"><div class="dialog-heading"><h2>新建知识库</h2><button value="cancel" class="icon-button" aria-label="关闭">×</button></div><label>名称<input id="kb-name" required maxlength="200"></label><label>描述<textarea id="kb-description-input" maxlength="1000"></textarea></label><div class="dialog-actions"><button value="cancel" class="ghost-button">取消</button><button value="default" class="primary-button">创建</button></div></form></dialog>
   <dialog id="model-config-dialog"><form method="dialog" id="model-config-form"><div class="dialog-heading"><div><p class="eyebrow">MODEL CONNECTION</p><h2 id="model-dialog-title">新增模型配置</h2></div><button value="cancel" class="icon-button" aria-label="关闭">×</button></div><input id="model-config-id" type="hidden"><label>供应商<select id="model-provider" required></select><small id="model-provider-hint" class="field-hint"></small></label><label>配置名称<input id="model-display-name" required maxlength="120" placeholder="例如：生产智谱 GLM"></label><label>Base URL<input id="model-base-url" required maxlength="512" placeholder="https://..." inputmode="url"></label><label>API Key<input id="model-api-key" maxlength="2048" type="password" autocomplete="new-password" placeholder="编辑时留空则保留原密钥"></label><div class="form-grid"><label>Chat 模型<select id="model-chat-model" required></select></label><label>自定义 Chat 模型<input id="model-chat-custom" class="hidden" maxlength="255" placeholder="输入模型名"></label></div><div class="form-grid"><label>Embedding 模型<select id="model-embedding-model"><option value="">不使用 Embedding</option></select></label><label>自定义 Embedding 模型<input id="model-embedding-custom" class="hidden" maxlength="255" placeholder="输入模型名"></label></div><label>向量维度<input id="model-embedding-dimension" type="number" min="1" max="100000" placeholder="例如：2048"></label><label class="checkbox-label"><input id="model-set-default" type="checkbox"> 保存后设为默认模型</label><div class="dialog-actions"><button value="cancel" class="ghost-button">取消</button><button value="default" class="primary-button" id="save-model-button">保存配置</button></div></form></dialog>
   <div id="toast" class="toast" role="status"></div><script src="/static/app.js"></script>
+  <script src="/static/retrieval.js"></script>
 </body>
 </html>

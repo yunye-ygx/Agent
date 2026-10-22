@@ -1,5 +1,37 @@
+from types import SimpleNamespace
+from unittest.mock import AsyncMock
+
+import pytest
+
 from app.api.routes.model_providers import PROVIDER_CATALOGS, _mask_key, _provider
 from app.core.config import settings
+
+
+@pytest.mark.asyncio
+async def test_saved_rerank_connection_test_never_calls_chat(monkeypatch):
+    from app.api.routes import model_providers as routes
+    from app.api.schemas_v2 import ModelProviderTestRequest
+
+    item = SimpleNamespace(
+        id="rank",
+        provider_key="rerank",
+        base_url="https://provider.test",
+        api_key="private",
+        chat_model="ranker",
+    )
+    monkeypatch.setattr(routes.repository, "get_model_configuration", AsyncMock(return_value=item))
+    ranker = AsyncMock()
+    monkeypatch.setattr(routes, "RerankClient", lambda *args: ranker)
+
+    def no_chat(*args, **kwargs):
+        raise AssertionError("Rerank should never call chat/completions")
+
+    monkeypatch.setattr(routes.httpx, "AsyncClient", no_chat)
+    result = await routes.test_saved_model_configuration(
+        "rank", ModelProviderTestRequest(text="q"), None
+    )
+    assert result.success
+    ranker.score.assert_awaited_once()
 
 
 def test_provider_key_is_masked() -> None:
@@ -7,6 +39,10 @@ def test_provider_key_is_masked() -> None:
 
     assert masked == "abcd••••••••wxyz"
     assert "secret" not in masked
+
+
+def test_rerank_catalog_is_independent_of_chat_and_embedding():
+    assert PROVIDER_CATALOGS["rerank"].capabilities == ["Rerank"]
 
 
 def test_qwen_provider_exposes_embedding_and_pipeline_status(monkeypatch) -> None:
