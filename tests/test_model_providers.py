@@ -9,35 +9,27 @@ def test_provider_key_is_masked() -> None:
     assert "secret" not in masked
 
 
-def test_zhipu_provider_exposes_embedding_and_pipeline_status(monkeypatch) -> None:
+def test_qwen_provider_exposes_embedding_and_pipeline_status(monkeypatch) -> None:
     monkeypatch.setattr(settings, "llm_api_key", "abcd-secret-value-wxyz")
-    monkeypatch.setattr(settings, "llm_base_url", "https://example.test/v4")
-    monkeypatch.setattr(settings, "embedding_model", "embedding-3")
+    monkeypatch.setattr(settings, "llm_base_url", "https://example.test/compatible-mode/v1")
+    monkeypatch.setattr(settings, "llm_model", "qwen-plus")
+    monkeypatch.setattr(settings, "embedding_model", "text-embedding-v4")
     monkeypatch.setattr(settings, "embedding_dimension", 2048)
 
-    provider = _provider("zhipu")
+    provider = _provider("qwen")
 
     assert provider.configured is True
-    assert provider.embedding_model == "embedding-3"
+    assert provider.embedding_model == "text-embedding-v4"
     assert provider.current_pipeline_compatible is True
     assert provider.api_key_masked != "abcd-secret-value-wxyz"
 
 
-def test_gpt_provider_is_visible_but_unconfigured_without_key(monkeypatch) -> None:
-    monkeypatch.setattr(settings, "gpt_api_key", None)
+def test_provider_catalog_exposes_initial_qwen_choices() -> None:
+    catalog = PROVIDER_CATALOGS["qwen"]
 
-    provider = _provider("gpt")
-
-    assert provider.configured is False
-    assert provider.embedding_model == "text-embedding-3-small"
-    assert provider.api_key_masked is None
-
-
-def test_provider_catalog_exposes_switchable_chat_models() -> None:
-    catalog = PROVIDER_CATALOGS["zhipu"]
-
-    assert catalog.chat_models == ["glm-5.1", "glm-5.2", "glm-5-turbo"]
-    assert catalog.embedding_dimensions["embedding-3"] == 2048
+    assert catalog.chat_models == ["qwen-plus"]
+    assert catalog.embedding_models == ["text-embedding-v4"]
+    assert catalog.embedding_dimensions["text-embedding-v4"] == 2048
 
 
 def test_saved_configuration_response_contract_does_not_include_plain_api_key() -> None:

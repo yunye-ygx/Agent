@@ -2,7 +2,7 @@ import httpx
 import pytest
 
 from app.core.config import Settings
-from app.rag.embedding import EmbeddingError, ZhipuEmbeddingClient
+from app.rag.embedding import EmbeddingError, OpenAICompatibleEmbeddingClient
 
 
 def _config() -> Settings:
@@ -29,7 +29,7 @@ async def test_embedding_client_preserves_provider_order() -> None:
             },
         )
 
-    client = ZhipuEmbeddingClient(_config(), httpx.MockTransport(handler))
+    client = OpenAICompatibleEmbeddingClient(_config(), httpx.MockTransport(handler))
 
     assert await client.embed_texts(["a", "b"]) == [
         [0.1, 0.2, 0.3],
@@ -42,7 +42,7 @@ async def test_embedding_client_rejects_wrong_dimension() -> None:
     async def handler(_: httpx.Request) -> httpx.Response:
         return httpx.Response(200, json={"data": [{"index": 0, "embedding": [1, 2]}]})
 
-    client = ZhipuEmbeddingClient(_config(), httpx.MockTransport(handler))
+    client = OpenAICompatibleEmbeddingClient(_config(), httpx.MockTransport(handler))
 
     with pytest.raises(EmbeddingError, match="维度不正确"):
         await client.embed_texts(["a"])

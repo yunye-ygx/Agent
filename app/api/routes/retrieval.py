@@ -6,7 +6,7 @@ from app.core.config import settings
 from app.db import mysql_repository as repository
 from app.db.mysql_models import Document, DocumentStatus, Generation
 from app.db.mysql_session import AsyncSessionFactory
-from app.rag.embedding import EmbeddingError, ZhipuEmbeddingClient
+from app.rag.embedding import EmbeddingError, OpenAICompatibleEmbeddingClient
 from app.rag.run_creation import embedding_identity
 from app.storage.elasticsearch_chunks import ChunkStore
 
@@ -52,7 +52,7 @@ async def search(
         run_ids = [run.id for run in runs]
     # Release the DB transaction before remote embedding/ES calls. Superseded
     # runs remain retained for an in-flight search that captured these pointers.
-    client = embedding_client or ZhipuEmbeddingClient(
+    client = embedding_client or OpenAICompatibleEmbeddingClient(
         settings.model_copy(
             update={
                 "embedding_model": vector_config["model"],

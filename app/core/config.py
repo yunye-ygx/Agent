@@ -42,15 +42,9 @@ class Settings(BaseSettings):
     llm_model: str | None = None
     embedding_model: str | None = None
     embedding_dimension: int = 2048
-    embedding_batch_size: int = 16
+    embedding_batch_size: int = 10
     model_timeout_seconds: float = 30.0
     llm_max_tokens: int = 512
-
-    gpt_base_url: str = "https://api.openai.com/v1"
-    gpt_api_key: str | None = None
-    gpt_model: str | None = "gpt-4o-mini"
-    gpt_embedding_model: str | None = "text-embedding-3-small"
-    gpt_embedding_dimension: int = 1536
 
     mineru_command: str = "mineru"
     mineru_timeout_seconds: float = 120.0

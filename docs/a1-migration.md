@@ -49,3 +49,11 @@
 - 7 个文档中有 5 个当前 active_run 为 SUCCESS 且产物可用；另 2 个没有可检索的已发布批次，因此在线实验会排除它们。
 - `.env` 中只把 `ELASTICSEARCH_INDEX` 从 `rag_demo_chunks_v1` 改为 `rag_demo_chunks_a1_v2`。恢复旧程序时应同时恢复 MySQL 备份与 `.env.pre-migration`；不要只切回旧索引而继续用新数据状态。
 - 当前部署的真实模型调用、在线检索质量和 A2 MinIO 快照写入尚未由用户执行验证。Docker 服务与应用本机接口已确认启动成功。
+
+## 后续千问向量迁移（2026-10-22）
+
+- 用户授权后，用提供的百炼 Key 对 `qwen-plus` 与 `text-embedding-v4` 各发出最小请求，两个模型均返回成功；精确剩余额度无法通过模型接口读取。
+- 将运行时配置改为百炼 OpenAI 兼容地址、`qwen-plus`、`text-embedding-v4`、2048 维；项目批量大小设为 10，以符合 Embedding v4 的单次请求上限。
+- 保留 `rag_demo_chunks_a1_v2`，并复制全部 196 条记录到新索引 `rag_demo_chunks_qwen_v1`。其中 5 个当前有效 Run 的 104 个 Chunk 按原内容重新生成向量；核对目标记录数、Chunk ID、正文和向量维度后，更新 5 个活动 Run 及所属 Knowledge Base 的向量模型元数据。
+- `.env` 当前指向 `rag_demo_chunks_qwen_v1`。源 A1 索引保留，便于回退。两份没有已发布 Run 的文档保持未发布状态。
+- API 健康检查、模型配置展示、知识库列表和实验会话接口已确认正常。尚未用真实用户问题验证召回质量；Rerank 仍未配置。

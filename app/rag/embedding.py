@@ -9,8 +9,8 @@ class EmbeddingError(RuntimeError):
     """Raised when the embedding provider cannot return usable vectors."""
 
 
-class ZhipuEmbeddingClient:
-    """Small async client for Zhipu's OpenAI-compatible embeddings endpoint."""
+class OpenAICompatibleEmbeddingClient:
+    """Small async client for the configured OpenAI-compatible embeddings endpoint."""
 
     def __init__(
         self,
@@ -37,11 +37,16 @@ class ZhipuEmbeddingClient:
         ) as client:
             for start in range(0, len(texts), batch_size):
                 batch = texts[start : start + batch_size]
+                payload = {"model": self.config.embedding_model, "input": batch}
+                # Qwen's v4 embedding endpoint defaults to 1024 dimensions. The
+                # index and stored runs use an explicit 2048-dimensional space.
+                if self.config.embedding_model == "text-embedding-v4":
+                    payload["dimensions"] = self.config.embedding_dimension
                 try:
                     response = await client.post(
                         "/embeddings",
                         headers={"Authorization": f"Bearer {self.config.llm_api_key}"},
-                        json={"model": self.config.embedding_model, "input": batch},
+                        json=payload,
                     )
                     response.raise_for_status()
                     payload: dict[str, Any] = response.json()
