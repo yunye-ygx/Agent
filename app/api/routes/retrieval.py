@@ -1,7 +1,8 @@
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 
 from app.api.schemas_v2 import SearchResponse
+from app.auth.dependencies import require_admin
 from app.core.config import settings
 from app.db import mysql_repository as repository
 from app.db.mysql_models import Document, DocumentStatus, Generation
@@ -10,7 +11,9 @@ from app.rag.embedding import EmbeddingError, OpenAICompatibleEmbeddingClient
 from app.rag.run_creation import embedding_identity
 from app.storage.elasticsearch_chunks import ChunkStore
 
-router = APIRouter(prefix="/api/v1/search", tags=["retrieval"])
+router = APIRouter(
+    prefix="/api/v1/search", tags=["retrieval"], dependencies=[Depends(require_admin)]
+)
 # Injectable override for isolated tests; production selects the active snapshot.
 embedding_client = None
 chunk_store = ChunkStore()

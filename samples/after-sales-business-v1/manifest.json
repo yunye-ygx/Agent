@@ -1,0 +1,29 @@
+{
+  "version": "after-sales-business-v1",
+  "synthetic": true,
+  "as_of": "2026-10-26",
+  "timezone": "Asia/Shanghai",
+  "counts": {
+    "users": 4,
+    "admins": 1,
+    "customers": 3,
+    "orders": 12,
+    "order_items": 12,
+    "devices": 18,
+    "tickets": 12,
+    "ticket_events": 35
+  },
+  "files": {
+    "users.json": "5cdc7ef321b3a730904c5962073971397fdea58a720f12bcaf39e89c1122412f",
+    "orders.json": "319cfbf5ace7b25d0a6afbdb1e5fa002a1cab5271ea74f0f5a68494c48b500a4",
+    "devices.json": "8b28eee7c1e8cec9a5b6a650ddd173b69278af58f119ab79557703d2061575e5",
+    "tickets.json": "040c59b1015d623bec5e23721f57d106dae547791380209da1a9e5a774b7fc91",
+    "knowledge-manifest.json": "cc9d571b64bd1394281dfc0132f7210fa95ba6d0cb4b467f251e7fc0da94b958"
+  },
+  "notes": [
+    "全部账号、订单、设备、工单均为合成练习数据，不代表真实客户或厂商。",
+    "密码不在任何样例文件中；seed_business 交互读取或从标准输入读取。",
+    "购买日期和保修截止日以 as_of 为基准相对生成。",
+    "重复执行只跳过已存在记录，不覆盖用户维护内容。"
+  ]
+}

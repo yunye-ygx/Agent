@@ -1,0 +1,29 @@
+{
+  "synthetic": true,
+  "users": [
+    {
+      "id": "user-admin-001",
+      "username": "admin",
+      "display_name": "售后管理员",
+      "role": "admin"
+    },
+    {
+      "id": "user-alice-001",
+      "username": "alice",
+      "display_name": "爱丽丝",
+      "role": "customer"
+    },
+    {
+      "id": "user-bob-001",
+      "username": "bob",
+      "display_name": "鲍勃",
+      "role": "customer"
+    },
+    {
+      "id": "user-carol-001",
+      "username": "carol",
+      "display_name": "卡罗尔",
+      "role": "customer"
+    }
+  ]
+}

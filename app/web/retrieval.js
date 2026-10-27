@@ -10,13 +10,7 @@
     el('status').classList.toggle('retrieval-error', failed);
   };
   async function fetchJSON(url, options) {
-    const response = await fetch(url, options);
-    const data = await response.json();
-    if (!response.ok) {
-      const message = Array.isArray(data.detail) ? data.detail.map((x) => `${x.loc.slice(1).join('.')}: ${x.msg}`).join('；') : data.detail;
-      throw new Error(message || `请求失败 (${response.status})`);
-    }
-    return data;
+    return window.apiRequest(url, options);
   }
   const post = (url, body) => fetchJSON(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
   function setOptions(select, items, placeholder) {

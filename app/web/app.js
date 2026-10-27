@@ -3,19 +3,12 @@ const state = {
   modelCatalog: [], modelConfigurations: [], editingModel: null, modelChoices: { chat_models: [], embedding_models: [] }, modelDiscoverySeq: 0, editingKnowledgeBase: null, poller: null, selectedKnowledgeBaseIds: new Set(),
 };
 const $ = (id) => document.getElementById(id);
-const request = async (url, options = {}) => {
-  const response = await fetch(url, options);
-  if (!response.ok) {
-    let detail = '请求失败';
-    try { detail = (await response.json()).detail || detail; } catch {}
-    throw new Error(detail);
-  }
-  return response.status === 204 ? null : response.json();
-};
+const request = (url, options = {}) => window.apiRequest(url, options);
 const toast = (message) => { const node = $('toast'); node.textContent = message; node.classList.add('show'); setTimeout(() => node.classList.remove('show'), 2600); };
 const statusClass = (value) => `status-pill status-${String(value).toLowerCase()}`;
 
 function showView(name) {
+  if (window.BusinessAuth?.showView) { window.BusinessAuth.showView(name); return; }
   document.querySelectorAll('.view').forEach((node) => node.classList.toggle('active-view', node.id === `${name}-view`));
   document.querySelectorAll('.nav-item').forEach((node) => node.classList.toggle('active', node.dataset.view === name));
 }
@@ -106,11 +99,12 @@ async function loadDocuments() {
   $('document-summary').textContent = `${docs.length} 个文档`;
   const node = $('document-list');
   if (!docs.length) { node.innerHTML = '<div class="empty-state">上传第一个文档开始解析。</div>'; stopDocumentPolling(); return; }
-  node.innerHTML = `<table class="data-table"><thead><tr><th>文件名</th><th>状态</th><th>当前版本</th><th>构建版本</th><th>解析进度</th><th>操作</th></tr></thead><tbody>${state.documents.map(renderDocumentRow).join('')}</tbody></table>`;
+  node.innerHTML = `<table class="data-table"><thead><tr><th>文件名</th><th>状态</th><th>当前版本</th><th>构建版本</th><th>解析进度</th><th>售后开放</th><th>操作</th></tr></thead><tbody>${state.documents.map(renderDocumentRow).join('')}</tbody></table>`;
   node.querySelectorAll('[data-open-doc]').forEach((button) => button.addEventListener('click', () => openDocument(button.dataset.openDoc)));
   node.querySelectorAll('[data-parse-doc]').forEach((button) => button.addEventListener('click', () => parseDocument(button.dataset.parseDoc, button.dataset.action)));
   node.querySelectorAll('[data-cancel-doc]').forEach((button) => button.addEventListener('click', () => cancelDocument(button.dataset.cancelDoc)));
   node.querySelectorAll('[data-delete-doc]').forEach((button) => button.addEventListener('click', () => deleteDocument(button.dataset.deleteDoc)));
+  node.querySelectorAll('[data-toggle-support]').forEach((button) => button.addEventListener('click', () => toggleDocumentSupport(button.dataset.toggleSupport, button.dataset.open !== 'true')));
   if (state.documents.some((doc) => doc.detail?.building_generation_id)) startDocumentPolling(); else stopDocumentPolling();
 }
 function generationProgress(generation) {
@@ -131,7 +125,20 @@ function renderDocumentRow(doc) {
   const parseButton = building
     ? `<button class="ghost-button" data-cancel-doc="${doc.id}">取消解析</button>`
     : `<button class="primary-button" data-parse-doc="${doc.id}" data-action="${action}">${action === 'reparse' ? '重新解析' : '开始解析'}</button>`;
-  return `<tr><td class="document-name">${escapeHtml(doc.filename)}</td><td><span class="${statusClass(doc.status)}">${doc.status}</span></td><td>${detail.current_generation?.version_no ? `v${detail.current_generation.version_no}` : '—'}</td><td>${detail.building_generation?.version_no ? `v${detail.building_generation.version_no}` : '—'}</td><td><div class="document-progress" aria-label="解析进度 ${progress.percent}%"><div class="progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${progress.percent}"><div class="progress-bar" style="width: ${progress.percent}%"></div></div><span>${progress.label}</span></div></td><td><div class="document-actions">${parseButton}<button class="ghost-button" data-open-doc="${doc.id}">查看</button><button class="danger-button" data-delete-doc="${doc.id}">删除</button></div></td></tr>`;
+  const supportOpen = Boolean(doc.support_open);
+  const supportCell = `<div class="document-support"><span class="status-pill ${supportOpen ? 'status-success' : 'status-closed'}">${supportOpen ? '已开放' : '未开放'}</span><button class="ghost-button" data-toggle-support="${doc.id}" data-open="${supportOpen}" title="只有已发布的文档才能开放给客户检索">${supportOpen ? '停止开放' : '开放售后'}</button></div>`;
+  return `<tr><td class="document-name">${escapeHtml(doc.filename)}</td><td><span class="${statusClass(doc.status)}">${doc.status}</span></td><td>${detail.current_generation?.version_no ? `v${detail.current_generation.version_no}` : '—'}</td><td>${detail.building_generation?.version_no ? `v${detail.building_generation.version_no}` : '—'}</td><td><div class="document-progress" aria-label="解析进度 ${progress.percent}%"><div class="progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${progress.percent}"><div class="progress-bar" style="width: ${progress.percent}%"></div></div><span>${progress.label}</span></div></td><td>${supportCell}</td><td><div class="document-actions">${parseButton}<button class="ghost-button" data-open-doc="${doc.id}">查看</button><button class="danger-button" data-delete-doc="${doc.id}">删除</button></div></td></tr>`;
+}
+async function toggleDocumentSupport(id, open) {
+  try {
+    await request(`/api/v1/documents/${id}/support`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ open }),
+    });
+    toast(open ? '已开放给客户检索' : '已停止开放');
+    await loadDocuments();
+  } catch (error) { toast(error.message); }
 }
 async function uploadDocument(event) {
   const file = event.target.files[0]; if (!file || !state.knowledgeBase) return; const form = new FormData(); form.append('file', file);
@@ -297,7 +304,13 @@ async function deleteModelConfiguration(id) { if (!window.confirm('删除后该�
 function formatDate(value) { return value ? new Date(value).toLocaleString() : '—'; }
 function escapeHtml(value) { return String(value).replace(/[&<>'"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[c])); }
 
-document.querySelectorAll('.nav-item').forEach((button) => button.addEventListener('click', () => { showView(button.dataset.view); if (button.dataset.view === 'models' && !state.modelCatalog.length) loadModelSettings(); }));
+document.querySelectorAll('.nav-item').forEach((button) => button.addEventListener('click', () => {
+  if (button.dataset.adminOnly && !window.BusinessAuth?.isAdmin()) return;
+  showView(button.dataset.view);
+  document.dispatchEvent(new CustomEvent('view:changed', { detail: { view: button.dataset.view } }));
+  if (button.dataset.view === 'models' && !state.modelCatalog.length) loadModelSettings();
+  if (button.dataset.view === 'knowledge' && window.BusinessAuth?.isAdmin()) loadKnowledgeBases().catch((error) => toast(error.message));
+}));
 $('new-kb-button').addEventListener('click', () => $('new-kb-dialog').showModal()); $('refresh-kb').addEventListener('click', () => loadKnowledgeBases().catch((error) => toast(error.message))); $('refresh-models').addEventListener('click', () => loadModelSettings()); $('new-model-button').addEventListener('click', () => openModelDialog()); $('model-config-form').addEventListener('submit', saveModelConfiguration);
 $('model-provider').addEventListener('change', () => { applyProviderPreset(true); if ($('model-provider').value === 'qwen') loadDiscoveredModels(); });
 $('model-base-url').addEventListener('input', markModelChoicesStale);
@@ -309,4 +322,6 @@ $('model-embedding-model').addEventListener('change', () => { $('model-embedding
 $('model-config-dialog').addEventListener('close', () => { state.modelDiscoverySeq += 1; });
 $('rename-kb-form').addEventListener('submit', async (event) => { event.preventDefault(); if (event.submitter?.value === 'cancel') { $('rename-kb-dialog').close(); state.editingKnowledgeBase = null; return; } const kb = state.editingKnowledgeBase; if (!kb) return; try { await request(`/api/v1/knowledge-bases/${encodeURIComponent(kb.id)}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: $('rename-kb-name').value }) }); $('rename-kb-dialog').close(); state.editingKnowledgeBase = null; toast('知识库名称已修改'); await loadKnowledgeBases(); } catch (error) { toast(error.message); } });
 $('delete-selected-kbs').addEventListener('click', () => deleteKnowledgeBases([...state.selectedKnowledgeBaseIds]));
-$('new-kb-form').addEventListener('submit', async (event) => { event.preventDefault(); try { await request('/api/v1/knowledge-bases', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: $('kb-name').value, description: $('kb-description-input').value || null }) }); $('new-kb-dialog').close(); $('kb-name').value = ''; $('kb-description-input').value = ''; toast('知识库已创建'); await loadKnowledgeBases(); } catch (error) { toast(error.message); } }); $('document-upload').addEventListener('change', uploadDocument); $('back-to-kbs').addEventListener('click', () => { $('kb-detail').classList.add('hidden'); $('kb-list-card').classList.remove('hidden'); state.knowledgeBase = null; }); $('back-to-documents').addEventListener('click', () => { $('document-detail').classList.add('hidden'); $('kb-detail').classList.remove('hidden'); loadDocuments(); }); $('chat-form').addEventListener('submit', (event) => { event.preventDefault(); toast('聊天后端尚未接入'); }); loadKnowledgeBases().catch((error) => toast(error.message));
+$('new-kb-form').addEventListener('submit', async (event) => { event.preventDefault(); try { await request('/api/v1/knowledge-bases', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: $('kb-name').value, description: $('kb-description-input').value || null }) }); $('new-kb-dialog').close(); $('kb-name').value = ''; $('kb-description-input').value = ''; toast('知识库已创建'); await loadKnowledgeBases(); } catch (error) { toast(error.message); } }); $('document-upload').addEventListener('change', uploadDocument); $('back-to-kbs').addEventListener('click', () => { $('kb-detail').classList.add('hidden'); $('kb-list-card').classList.remove('hidden'); state.knowledgeBase = null; }); $('back-to-documents').addEventListener('click', () => { $('document-detail').classList.add('hidden'); $('kb-detail').classList.remove('hidden'); loadDocuments(); }); $('chat-form').addEventListener('submit', (event) => { event.preventDefault(); toast('聊天后端尚未接入'); });
+document.addEventListener('auth:unauthorized', () => { stopDocumentPolling(); state.knowledgeBases = []; state.documents = []; state.chunks = []; });
+window.AdminViews = { loadKnowledgeBases, loadModelSettings, stopDocumentPolling };

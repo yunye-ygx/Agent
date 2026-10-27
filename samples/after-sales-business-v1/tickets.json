@@ -1,0 +1,429 @@
+{
+  "synthetic": true,
+  "tickets": [
+    {
+      "id": "ticket-2026-001",
+      "ticket_no": "T2026-0001",
+      "user_id": "user-alice-001",
+      "device_id": "device-2026-001",
+      "subject": "NX100 报 E17，上盖反复提示未闭合",
+      "description": "NX100 报 E17，上盖反复提示未闭合。合成练习数据，用于验证售后工单与处理记录。",
+      "status": "open",
+      "created_at": "2026-10-16T09:00:00Z",
+      "events": [
+        {
+          "actor": "customer",
+          "event_type": "created",
+          "from_status": null,
+          "to_status": "open",
+          "message": "工单已创建",
+          "at": "2026-10-16T09:00:00Z"
+        }
+      ]
+    },
+    {
+      "id": "ticket-2026-002",
+      "ticket_no": "T2026-0002",
+      "user_id": "user-alice-001",
+      "device_id": "device-2026-003",
+      "subject": "标签打印逐张偏移，校准后仍偏移",
+      "description": "标签打印逐张偏移，校准后仍偏移。合成练习数据，用于验证售后工单与处理记录。",
+      "status": "open",
+      "created_at": "2026-10-17T09:00:00Z",
+      "events": [
+        {
+          "actor": "customer",
+          "event_type": "created",
+          "from_status": null,
+          "to_status": "open",
+          "message": "工单已创建",
+          "at": "2026-10-17T09:00:00Z"
+        },
+        {
+          "actor": "admin",
+          "event_type": "comment",
+          "from_status": "open",
+          "to_status": "open",
+          "message": "已收到，请补充标签尺寸和固件版本照片",
+          "at": "2026-10-17T12:00:00Z"
+        }
+      ]
+    },
+    {
+      "id": "ticket-2026-003",
+      "ticket_no": "T2026-0003",
+      "user_id": "user-alice-001",
+      "device_id": "device-2026-004",
+      "subject": "NX200 提示 E42 地址冲突",
+      "description": "NX200 提示 E42 地址冲突。合成练习数据，用于验证售后工单与处理记录。",
+      "status": "open",
+      "created_at": "2026-10-18T09:00:00Z",
+      "events": [
+        {
+          "actor": "customer",
+          "event_type": "created",
+          "from_status": null,
+          "to_status": "open",
+          "message": "工单已创建",
+          "at": "2026-10-18T09:00:00Z"
+        }
+      ]
+    },
+    {
+      "id": "ticket-2026-004",
+      "ticket_no": "T2026-0004",
+      "user_id": "user-alice-001",
+      "device_id": "device-2026-002",
+      "subject": "设备无法开机，电源指示灯不亮",
+      "description": "设备无法开机，电源指示灯不亮。合成练习数据，用于验证售后工单与处理记录。",
+      "status": "in_progress",
+      "created_at": "2026-10-19T09:00:00Z",
+      "events": [
+        {
+          "actor": "customer",
+          "event_type": "created",
+          "from_status": null,
+          "to_status": "open",
+          "message": "工单已创建",
+          "at": "2026-10-19T09:00:00Z"
+        },
+        {
+          "actor": "admin",
+          "event_type": "status_change",
+          "from_status": "open",
+          "to_status": "in_progress",
+          "message": "已安排远程排查电源和插座供电",
+          "at": "2026-10-19T11:00:00Z"
+        }
+      ]
+    },
+    {
+      "id": "ticket-2026-005",
+      "ticket_no": "T2026-0005",
+      "user_id": "user-bob-001",
+      "device_id": "device-2026-005",
+      "subject": "打印内容有纵向白条",
+      "description": "打印内容有纵向白条。合成练习数据，用于验证售后工单与处理记录。",
+      "status": "in_progress",
+      "created_at": "2026-10-20T09:00:00Z",
+      "events": [
+        {
+          "actor": "customer",
+          "event_type": "created",
+          "from_status": null,
+          "to_status": "open",
+          "message": "工单已创建",
+          "at": "2026-10-20T09:00:00Z"
+        },
+        {
+          "actor": "admin",
+          "event_type": "status_change",
+          "from_status": "open",
+          "to_status": "in_progress",
+          "message": "请提供打印样张照片，正在核查打印头",
+          "at": "2026-10-20T13:00:00Z"
+        },
+        {
+          "actor": "admin",
+          "event_type": "comment",
+          "from_status": "in_progress",
+          "to_status": "in_progress",
+          "message": "样张已收到，等待配件确认",
+          "at": "2026-10-21T05:00:00Z"
+        }
+      ]
+    },
+    {
+      "id": "ticket-2026-006",
+      "ticket_no": "T2026-0006",
+      "user_id": "user-bob-001",
+      "device_id": "device-2026-007",
+      "subject": "NX100 固件 1.5.0 无法进入介质校准",
+      "description": "NX100 固件 1.5.0 无法进入介质校准。合成练习数据，用于验证售后工单与处理记录。",
+      "status": "in_progress",
+      "created_at": "2026-10-21T09:00:00Z",
+      "events": [
+        {
+          "actor": "customer",
+          "event_type": "created",
+          "from_status": null,
+          "to_status": "open",
+          "message": "工单已创建",
+          "at": "2026-10-21T09:00:00Z"
+        },
+        {
+          "actor": "admin",
+          "event_type": "status_change",
+          "from_status": "open",
+          "to_status": "in_progress",
+          "message": "正在核对管理页维护菜单版本",
+          "at": "2026-10-21T14:00:00Z"
+        },
+        {
+          "actor": "admin",
+          "event_type": "comment",
+          "from_status": "in_progress",
+          "to_status": "in_progress",
+          "message": "用户已升级到 1.6.0，继续观察",
+          "at": "2026-10-22T15:00:00Z"
+        }
+      ]
+    },
+    {
+      "id": "ticket-2026-007",
+      "ticket_no": "T2026-0007",
+      "user_id": "user-bob-001",
+      "device_id": "device-2026-006",
+      "subject": "NX200 网络打印间歇中断",
+      "description": "NX200 网络打印间歇中断。合成练习数据，用于验证售后工单与处理记录。",
+      "status": "resolved",
+      "created_at": "2026-10-22T09:00:00Z",
+      "events": [
+        {
+          "actor": "customer",
+          "event_type": "created",
+          "from_status": null,
+          "to_status": "open",
+          "message": "工单已创建",
+          "at": "2026-10-22T09:00:00Z"
+        },
+        {
+          "actor": "admin",
+          "event_type": "status_change",
+          "from_status": "open",
+          "to_status": "in_progress",
+          "message": "检查交换机端口与 IP 分配方式",
+          "at": "2026-10-22T11:00:00Z"
+        },
+        {
+          "actor": "admin",
+          "event_type": "status_change",
+          "from_status": "in_progress",
+          "to_status": "resolved",
+          "message": "重新绑定静态地址后连续打印正常",
+          "at": "2026-10-23T15:00:00Z"
+        }
+      ]
+    },
+    {
+      "id": "ticket-2026-008",
+      "ticket_no": "T2026-0008",
+      "user_id": "user-carol-001",
+      "device_id": "device-2026-009",
+      "subject": "NX100 清洁后仍频繁卡纸",
+      "description": "NX100 清洁后仍频繁卡纸。合成练习数据，用于验证售后工单与处理记录。",
+      "status": "resolved",
+      "created_at": "2026-10-23T09:00:00Z",
+      "events": [
+        {
+          "actor": "customer",
+          "event_type": "created",
+          "from_status": null,
+          "to_status": "open",
+          "message": "工单已创建",
+          "at": "2026-10-23T09:00:00Z"
+        },
+        {
+          "actor": "admin",
+          "event_type": "status_change",
+          "from_status": "open",
+          "to_status": "in_progress",
+          "message": "指导清理导纸片附近纸屑",
+          "at": "2026-10-23T10:00:00Z"
+        },
+        {
+          "actor": "admin",
+          "event_type": "status_change",
+          "from_status": "in_progress",
+          "to_status": "resolved",
+          "message": "更换纸卷后恢复正常",
+          "at": "2026-10-23T17:00:00Z"
+        },
+        {
+          "actor": "admin",
+          "event_type": "comment",
+          "from_status": "resolved",
+          "to_status": "resolved",
+          "message": "已回访，客户确认无复现",
+          "at": "2026-10-24T13:00:00Z"
+        }
+      ]
+    },
+    {
+      "id": "ticket-2026-009",
+      "ticket_no": "T2026-0009",
+      "user_id": "user-carol-001",
+      "device_id": "device-2026-010",
+      "subject": "打印浓度不稳定",
+      "description": "打印浓度不稳定。合成练习数据，用于验证售后工单与处理记录。",
+      "status": "resolved",
+      "created_at": "2026-10-23T09:00:00Z",
+      "events": [
+        {
+          "actor": "customer",
+          "event_type": "created",
+          "from_status": null,
+          "to_status": "open",
+          "message": "工单已创建",
+          "at": "2026-10-23T09:00:00Z"
+        },
+        {
+          "actor": "admin",
+          "event_type": "status_change",
+          "from_status": "open",
+          "to_status": "in_progress",
+          "message": "确认介质类型和浓度设置",
+          "at": "2026-10-23T11:00:00Z"
+        },
+        {
+          "actor": "admin",
+          "event_type": "status_change",
+          "from_status": "in_progress",
+          "to_status": "resolved",
+          "message": "调整介质类型后恢复",
+          "at": "2026-10-24T11:00:00Z"
+        }
+      ]
+    },
+    {
+      "id": "ticket-2026-010",
+      "ticket_no": "T2026-0010",
+      "user_id": "user-carol-001",
+      "device_id": "device-2026-012",
+      "subject": "NX200 无法连接管理页",
+      "description": "NX200 无法连接管理页。合成练习数据，用于验证售后工单与处理记录。",
+      "status": "closed",
+      "created_at": "2026-10-24T09:00:00Z",
+      "events": [
+        {
+          "actor": "customer",
+          "event_type": "created",
+          "from_status": null,
+          "to_status": "open",
+          "message": "工单已创建",
+          "at": "2026-10-24T09:00:00Z"
+        },
+        {
+          "actor": "admin",
+          "event_type": "status_change",
+          "from_status": "open",
+          "to_status": "in_progress",
+          "message": "核对网络地址和浏览器访问方式",
+          "at": "2026-10-24T10:00:00Z"
+        },
+        {
+          "actor": "admin",
+          "event_type": "status_change",
+          "from_status": "in_progress",
+          "to_status": "resolved",
+          "message": "清除错误代理设置后可访问",
+          "at": "2026-10-24T14:00:00Z"
+        },
+        {
+          "actor": "admin",
+          "event_type": "status_change",
+          "from_status": "resolved",
+          "to_status": "closed",
+          "message": "客户确认关闭",
+          "at": "2026-10-25T09:00:00Z"
+        }
+      ]
+    },
+    {
+      "id": "ticket-2026-011",
+      "ticket_no": "T2026-0011",
+      "user_id": "user-carol-001",
+      "device_id": "device-2026-013",
+      "subject": "固件升级后打印速度变慢",
+      "description": "固件升级后打印速度变慢。合成练习数据，用于验证售后工单与处理记录。",
+      "status": "closed",
+      "created_at": "2026-10-24T09:00:00Z",
+      "events": [
+        {
+          "actor": "customer",
+          "event_type": "created",
+          "from_status": null,
+          "to_status": "open",
+          "message": "工单已创建",
+          "at": "2026-10-24T09:00:00Z"
+        },
+        {
+          "actor": "admin",
+          "event_type": "status_change",
+          "from_status": "open",
+          "to_status": "in_progress",
+          "message": "核对升级前后配置差异",
+          "at": "2026-10-24T11:00:00Z"
+        },
+        {
+          "actor": "admin",
+          "event_type": "status_change",
+          "from_status": "in_progress",
+          "to_status": "resolved",
+          "message": "恢复介质校准参数后速度正常",
+          "at": "2026-10-24T15:00:00Z"
+        },
+        {
+          "actor": "admin",
+          "event_type": "status_change",
+          "from_status": "resolved",
+          "to_status": "closed",
+          "message": "已确认关闭",
+          "at": "2026-10-25T11:00:00Z"
+        },
+        {
+          "actor": "admin",
+          "event_type": "comment",
+          "from_status": "closed",
+          "to_status": "closed",
+          "message": "归档：保留升级记录",
+          "at": "2026-10-25T15:00:00Z"
+        }
+      ]
+    },
+    {
+      "id": "ticket-2026-012",
+      "ticket_no": "T2026-0012",
+      "user_id": "user-bob-001",
+      "device_id": "device-2026-008",
+      "subject": "退役设备的历史打印异常核对",
+      "description": "退役设备的历史打印异常核对。合成练习数据，用于验证售后工单与处理记录。",
+      "status": "closed",
+      "created_at": "2026-10-25T09:00:00Z",
+      "events": [
+        {
+          "actor": "customer",
+          "event_type": "created",
+          "from_status": null,
+          "to_status": "open",
+          "message": "工单已创建",
+          "at": "2026-10-25T09:00:00Z"
+        },
+        {
+          "actor": "admin",
+          "event_type": "status_change",
+          "from_status": "open",
+          "to_status": "in_progress",
+          "message": "设备已退役，核对历史记录",
+          "at": "2026-10-25T11:00:00Z"
+        },
+        {
+          "actor": "admin",
+          "event_type": "status_change",
+          "from_status": "in_progress",
+          "to_status": "resolved",
+          "message": "历史故障与已更换主板相关",
+          "at": "2026-10-25T18:00:00Z"
+        },
+        {
+          "actor": "admin",
+          "event_type": "status_change",
+          "from_status": "resolved",
+          "to_status": "closed",
+          "message": "客户不再使用该设备，关闭",
+          "at": "2026-10-26T10:00:00Z"
+        }
+      ]
+    }
+  ]
+}

@@ -44,6 +44,14 @@ async def test_http_experiment_roundtrip_and_owner_isolation(monkeypatch):
     monkeypatch.setattr(routes, "snapshots", MemorySnapshots())
     app = FastAPI()
     app.include_router(routes.router)
+    from app.auth.dependencies import require_admin, require_csrf_for_write
+    from app.business.principal import Principal
+
+    admin = Principal.for_user(
+        user_id="admin-id", username="admin", display_name="管理员", role="admin"
+    )
+    app.dependency_overrides[require_admin] = lambda: admin
+    app.dependency_overrides[require_csrf_for_write] = lambda: admin
     transport = httpx.ASGITransport(app=app, client=("127.0.0.1", 1234))
     async with httpx.AsyncClient(transport=transport, base_url="http://localhost") as client:
         response = await client.post(

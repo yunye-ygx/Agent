@@ -1,0 +1,209 @@
+{
+  "synthetic": true,
+  "orders": [
+    {
+      "id": "order-2026-001",
+      "order_no": "SO-2026-1001",
+      "user_id": "user-alice-001",
+      "status": "completed",
+      "currency": "CNY",
+      "created_at": "2026-08-27T09:00:00Z",
+      "items": [
+        {
+          "id": "item-001-1",
+          "product_name": "澄印 NX100 标签打印机",
+          "product_model": "NX100",
+          "quantity": 1,
+          "unit_price": "1299.00"
+        }
+      ]
+    },
+    {
+      "id": "order-2026-002",
+      "order_no": "SO-2026-1002",
+      "user_id": "user-alice-001",
+      "status": "completed",
+      "currency": "CNY",
+      "created_at": "2026-09-01T09:00:00Z",
+      "items": [
+        {
+          "id": "item-002-1",
+          "product_name": "澄印 NX200 标签打印机",
+          "product_model": "NX200",
+          "quantity": 1,
+          "unit_price": "1899.00"
+        }
+      ]
+    },
+    {
+      "id": "order-2026-003",
+      "order_no": "SO-2026-1003",
+      "user_id": "user-alice-001",
+      "status": "completed",
+      "currency": "CNY",
+      "created_at": "2026-09-16T09:00:00Z",
+      "items": [
+        {
+          "id": "item-003-1",
+          "product_name": "澄印 NX100 标签打印机",
+          "product_model": "NX100",
+          "quantity": 1,
+          "unit_price": "1299.00"
+        }
+      ]
+    },
+    {
+      "id": "order-2026-004",
+      "order_no": "SO-2026-1004",
+      "user_id": "user-alice-001",
+      "status": "recorded",
+      "currency": "CNY",
+      "created_at": "2026-10-06T09:00:00Z",
+      "items": [
+        {
+          "id": "item-004-1",
+          "product_name": "澄印 NX200 标签打印机",
+          "product_model": "NX200",
+          "quantity": 1,
+          "unit_price": "1899.00"
+        }
+      ]
+    },
+    {
+      "id": "order-2026-005",
+      "order_no": "SO-2026-1005",
+      "user_id": "user-bob-001",
+      "status": "completed",
+      "currency": "CNY",
+      "created_at": "2026-09-06T09:00:00Z",
+      "items": [
+        {
+          "id": "item-005-1",
+          "product_name": "澄印 NX100 标签打印机",
+          "product_model": "NX100",
+          "quantity": 1,
+          "unit_price": "1299.00"
+        }
+      ]
+    },
+    {
+      "id": "order-2026-006",
+      "order_no": "SO-2026-1006",
+      "user_id": "user-bob-001",
+      "status": "completed",
+      "currency": "CNY",
+      "created_at": "2026-09-11T09:00:00Z",
+      "items": [
+        {
+          "id": "item-006-1",
+          "product_name": "澄印 NX200 标签打印机",
+          "product_model": "NX200",
+          "quantity": 1,
+          "unit_price": "1899.00"
+        }
+      ]
+    },
+    {
+      "id": "order-2026-007",
+      "order_no": "SO-2026-1007",
+      "user_id": "user-bob-001",
+      "status": "recorded",
+      "currency": "CNY",
+      "created_at": "2026-10-11T09:00:00Z",
+      "items": [
+        {
+          "id": "item-007-1",
+          "product_name": "澄印 NX100 标签打印机",
+          "product_model": "NX100",
+          "quantity": 1,
+          "unit_price": "1299.00"
+        }
+      ]
+    },
+    {
+      "id": "order-2026-008",
+      "order_no": "SO-2026-1008",
+      "user_id": "user-bob-001",
+      "status": "recorded",
+      "currency": "CNY",
+      "created_at": "2026-10-14T09:00:00Z",
+      "items": [
+        {
+          "id": "item-008-1",
+          "product_name": "澄印 NX200 标签打印机",
+          "product_model": "NX200",
+          "quantity": 1,
+          "unit_price": "1899.00"
+        }
+      ]
+    },
+    {
+      "id": "order-2026-009",
+      "order_no": "SO-2026-1009",
+      "user_id": "user-carol-001",
+      "status": "recorded",
+      "currency": "CNY",
+      "created_at": "2026-09-26T09:00:00Z",
+      "items": [
+        {
+          "id": "item-009-1",
+          "product_name": "澄印 NX100 标签打印机",
+          "product_model": "NX100",
+          "quantity": 3,
+          "unit_price": "1299.00"
+        }
+      ]
+    },
+    {
+      "id": "order-2026-010",
+      "order_no": "SO-2026-1010",
+      "user_id": "user-carol-001",
+      "status": "recorded",
+      "currency": "CNY",
+      "created_at": "2026-10-01T09:00:00Z",
+      "items": [
+        {
+          "id": "item-010-1",
+          "product_name": "澄印 NX200 标签打印机",
+          "product_model": "NX200",
+          "quantity": 3,
+          "unit_price": "1899.00"
+        }
+      ]
+    },
+    {
+      "id": "order-2026-011",
+      "order_no": "SO-2026-1011",
+      "user_id": "user-carol-001",
+      "status": "recorded",
+      "currency": "CNY",
+      "created_at": "2026-10-08T09:00:00Z",
+      "items": [
+        {
+          "id": "item-011-1",
+          "product_name": "澄印 NX100 标签打印机",
+          "product_model": "NX100",
+          "quantity": 2,
+          "unit_price": "1299.00"
+        }
+      ]
+    },
+    {
+      "id": "order-2026-012",
+      "order_no": "SO-2026-1012",
+      "user_id": "user-carol-001",
+      "status": "recorded",
+      "currency": "CNY",
+      "created_at": "2026-10-18T09:00:00Z",
+      "items": [
+        {
+          "id": "item-012-1",
+          "product_name": "澄印 NX200 标签打印机",
+          "product_model": "NX200",
+          "quantity": 2,
+          "unit_price": "1899.00"
+        }
+      ]
+    }
+  ]
+}

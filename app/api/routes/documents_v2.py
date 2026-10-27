@@ -15,6 +15,13 @@ from app.api.schemas_v2 import (
     GenerationResponse,
     TaskRangeResponse,
 )
+from app.auth.dependencies import (
+    get_current_principal,
+    require_admin,
+    require_csrf_for_write,
+)
+from app.business import knowledge as knowledge_service
+from app.business.schemas import DocumentSupportResponse, DocumentSupportUpdate
 from app.core.config import settings
 from app.db import mysql_repository as repository
 from app.db.mysql_models import Generation, GenerationStatus, Task
@@ -25,7 +32,11 @@ from app.rag.run_creation import create_run
 from app.storage.elasticsearch_chunks import ChunkStore
 from app.storage.minio_storage import MinioStorage
 
-router = APIRouter(prefix="/api/v1", tags=["documents"])
+router = APIRouter(
+    prefix="/api/v1",
+    tags=["documents"],
+    dependencies=[Depends(require_admin), Depends(require_csrf_for_write)],
+)
 storage = MinioStorage()
 chunk_store = ChunkStore()
 
@@ -38,6 +49,7 @@ def _document_response(item, *, building_id=None) -> DocumentResponse:
         file_size=item.file_size,
         mime_type=item.mime_type,
         status=item.status,
+        support_open=bool(item.support_open),
         current_generation_id=item.current_generation_id,
         building_generation_id=building_id,
         active_run_id=item.active_run_id,
@@ -196,6 +208,19 @@ async def get_document_detail(
         building_generation=_generation_response(building) if building else None,
         latest_run=_generation_response(latest) if latest else None,
     )
+
+
+@router.patch("/documents/{document_id}/support", response_model=DocumentSupportResponse)
+async def set_document_support(
+    document_id: str,
+    payload: DocumentSupportUpdate,
+    session: AsyncSession = Depends(get_mysql_session),
+    principal=Depends(get_current_principal),
+) -> DocumentSupportResponse:
+    data = await knowledge_service.set_document_support_open(
+        session, principal, document_id, open_=payload.open
+    )
+    return DocumentSupportResponse(**data)
 
 
 @router.delete("/documents/{document_id}", status_code=204)

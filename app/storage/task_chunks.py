@@ -123,6 +123,7 @@ class TaskChunkOperations:
         run_ids: list[str] | None = None,
         kb_id: str | None = None,
         document_id: str | None = None,
+        document_ids: list[str] | None = None,
         limit: int = 5,
         generation_id: str | None = None,
     ) -> list[dict[str, Any]]:
@@ -135,6 +136,8 @@ class TaskChunkOperations:
             filters.append({"term": {"kb_id": kb_id}})
         if document_id:
             filters.append({"term": {"doc_id": document_id}})
+        if document_ids:
+            filters.append({"terms": {"doc_id": list(document_ids)}})
         response = await self.client.search(
             index=self.index,
             knn={

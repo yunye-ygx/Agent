@@ -85,6 +85,7 @@ class DocumentResponse(BaseModel):
     file_size: int
     mime_type: str
     status: str
+    support_open: bool = False
     current_generation_id: str | None
     building_generation_id: str | None
     current_run_id: str | None = None

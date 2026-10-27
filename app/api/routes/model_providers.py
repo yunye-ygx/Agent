@@ -19,6 +19,7 @@ from app.api.schemas_v2 import (
     ModelProviderTestRequest,
     ModelProviderTestResponse,
 )
+from app.auth.dependencies import require_admin, require_csrf_for_write
 from app.core.config import settings
 from app.db import mysql_repository as repository
 from app.db.mysql_session import get_mysql_session
@@ -26,7 +27,11 @@ from app.rag.embedding import EmbeddingError, OpenAICompatibleEmbeddingClient
 from app.rag.model_discovery import ModelDiscoveryError, discover_qwen_models
 from app.retrieval.rerank import RerankClient, RerankError
 
-router = APIRouter(prefix="/api/v1/model-providers", tags=["model-providers"])
+router = APIRouter(
+    prefix="/api/v1/model-providers",
+    tags=["model-providers"],
+    dependencies=[Depends(require_admin), Depends(require_csrf_for_write)],
+)
 
 
 PROVIDER_CATALOGS: dict[str, ModelProviderCatalogResponse] = {

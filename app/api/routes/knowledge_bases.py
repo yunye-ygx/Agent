@@ -9,10 +9,15 @@ from app.api.schemas_v2 import (
     KnowledgeBaseResponse,
     KnowledgeBaseUpdate,
 )
+from app.auth.dependencies import require_admin, require_csrf_for_write
 from app.db import mysql_repository as repository
 from app.db.mysql_session import get_mysql_session
 
-router = APIRouter(prefix="/api/v1/knowledge-bases", tags=["knowledge-bases"])
+router = APIRouter(
+    prefix="/api/v1/knowledge-bases",
+    tags=["knowledge-bases"],
+    dependencies=[Depends(require_admin), Depends(require_csrf_for_write)],
+)
 
 
 def _serialize(item) -> KnowledgeBaseResponse:

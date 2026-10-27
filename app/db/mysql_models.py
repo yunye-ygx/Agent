@@ -135,6 +135,9 @@ class Document(Base):
     status: Mapped[DocumentStatus] = mapped_column(
         String(32), nullable=False, default=DocumentStatus.ACTIVE
     )
+    # 售后资料开放开关：只有 support_open 且已发布生成版本的文档可被 Agent 检索。
+    # 型号维度不入库，由 Agent 用设备型号限定问题或在信息不足时向用户澄清。
+    support_open: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     current_generation_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
     building_generation_id: Mapped[str | None] = mapped_column(
         String(36), nullable=True, index=True
