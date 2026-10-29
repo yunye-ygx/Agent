@@ -1,0 +1,27 @@
+#chat-view .chat-layout { min-height: 620px; height: calc(100dvh - 140px); }
+#chat-view .chat-sidebar { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+#chat-conversations { overflow-y: auto; display: grid; gap: 8px; }
+#chat-conversations button { text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; width: 100%; }
+#chat-view .chat-panel { min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+#chat-messages { flex: 1; overflow-y: auto; min-height: 120px; padding: 24px; }
+.chat-message { margin-bottom: 18px; padding: 16px; border-radius: 12px; background: #f3f5f8; overflow-wrap: anywhere; }
+.chat-message.user { background: #e9f0fb; margin-left: 8%; }
+.chat-message strong, .chat-message summary { display: block; margin-bottom: 8px; font-size: 13px; color: #48546a; }
+.chat-message summary { cursor: pointer; }
+.chat-message div, .chat-message pre, .chat-message.streaming { white-space: pre-wrap; }
+.chat-message pre { max-height: 240px; overflow: auto; font-size: 12px; }
+.chat-message small { display: block; color: #96641f; margin-top: 8px; }
+.chat-empty { color: #697488; line-height: 1.8; }
+#chat-status { margin: 0; padding: 8px 24px; color: #697488; font-size: 13px; }
+#chat-status.error { color: #a52727; }
+#chat-view .chat-heading { gap: 12px; }
+#chat-view h1 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 44vw; }
+#chat-input { min-width: 0; }
+#chat-view button:disabled { opacity: .55; cursor: wait; }
+@media (max-width: 760px) {
+  #chat-view .chat-layout { display: flex; flex-direction: column; height: auto; min-height: 0; }
+  #chat-view .chat-sidebar { max-height: 240px; }
+  #chat-view .chat-panel { height: 70dvh; min-height: 420px; }
+  #chat-view h1 { max-width: 50vw; font-size: 20px; }
+  #chat-messages { padding: 14px; }
+}

@@ -11,6 +11,7 @@ from sqlalchemy import text
 
 from app.api.errors import install_business_error_handler
 from app.api.routes.auth import router as auth_router
+from app.api.routes.chat import router as chat_router
 from app.api.routes.customers import router as customers_router
 from app.api.routes.devices import router as devices_router
 from app.api.routes.documents_v2 import router as documents_router
@@ -85,6 +86,7 @@ app = FastAPI(
 )
 
 app.include_router(auth_router)
+app.include_router(chat_router)
 app.include_router(customers_router)
 app.include_router(orders_router)
 app.include_router(devices_router)

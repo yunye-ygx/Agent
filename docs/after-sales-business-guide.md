@@ -46,7 +46,7 @@
 | `app/api/routes/` | `/api/v1/*` 页面接口与工具调试接口 |
 | `app/web/auth.js`、`business.js`、`tool-lab.js`、`business.css` | 新页面模块 |
 | `app/cli/` | 迁移检查、管理员、数据初始化、资料导入、密码重置、过期清理 |
-| `samples/after-sales-business-v1/` | 合成数据、清单、说明 |
+| `docs/samples/after-sales-business-v1/` | 合成数据、清单、说明 |
 | `tests/test_business_mysql_integration.py` | 真实 MySQL 约束/锁/回滚/幂等验收 |
 
 ## 3. 启动
@@ -145,7 +145,7 @@ python -X utf8 -m app.cli.seed_business --apply --yes --create-users
 
 - 1 管理员（`admin`）、3 客户（`alice`/`bob`/`carol`）、12 订单、12 明细、
   18 设备、12 工单、35 条处理记录。
-- 数据文件：`samples/after-sales-business-v1/`；全部为合成练习数据。
+- 数据文件：`docs/samples/after-sales-business-v1/`；全部为合成练习数据。
 - 基准日期固定为 `2026-10-26`；`--as-of` 必须与 manifest 一致，设备购买/保修
   日期按基准日相对生成。
 - 以固定 ID 和自然唯一键防重：重复执行只跳过，不重复插入、不覆盖已修改内容。
@@ -154,7 +154,7 @@ python -X utf8 -m app.cli.seed_business --apply --yes --create-users
 
 ## 5. 开放售后资料
 
-清单：`samples/after-sales-business-v1/knowledge-manifest.json`
+清单：`docs/samples/after-sales-business-v1/knowledge-manifest.json`
 
 - 只允许 corpus 的 `01`～`06`，共 6 份文档。
 - `07` 旧校准文档、`08`～`10` 历史工单和 `eval/` 评测题明确排除。

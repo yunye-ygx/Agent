@@ -8,8 +8,8 @@ from reportlab.lib.utils import ImageReader
 from reportlab.pdfgen import canvas
 
 ROOT = Path(__file__).resolve().parents[1]
-ASSET_DIR = ROOT / "samples" / "assets"
-PDF_PATH = ROOT / "samples" / "image-pdf-chunking-demo.pdf"
+ASSET_DIR = ROOT / "docs" / "samples" / "assets"
+PDF_PATH = ROOT / "docs" / "samples" / "image-pdf-chunking-demo.pdf"
 CANVAS_SIZE = (1400, 990)
 
 

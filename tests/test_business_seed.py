@@ -11,7 +11,7 @@ from app.cli import seed_business
 from app.cli.import_support_knowledge import load_manifest
 
 ROOT = Path(__file__).resolve().parents[1]
-DATA = ROOT / "samples" / "after-sales-business-v1"
+DATA = ROOT / "docs" / "samples" / "after-sales-business-v1"
 PASSWORDS = {
     "admin": "admin-password-2026",
     "alice": "alice-password-2026",

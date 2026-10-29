@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="/static/app-model.css?v=20261022-model-catalog">
   <link rel="stylesheet" href="/static/retrieval.css">
   <link rel="stylesheet" href="/static/business.css">
+  <link rel="stylesheet" href="/static/chat.css">
 </head>
 <body class="not-authenticated" data-authenticated="false">
   <header class="topbar">
@@ -22,7 +23,7 @@
       <button class="nav-item" data-view="knowledge" data-admin-only>知识库</button>
       <button class="nav-item" data-view="retrieval" data-admin-only>检索实验</button>
       <button class="nav-item" data-view="models" data-admin-only>模型配置</button>
-      <button class="nav-item" data-view="chat" data-admin-only>聊天</button>
+      <button class="nav-item" data-view="chat">聊天</button>
     </nav>
     <div id="identity-bar" class="identity-bar">
       <span id="identity-avatar" class="identity-avatar" aria-hidden="true">·</span>
@@ -330,7 +331,24 @@
     </section>
 
     <section id="chat-view" class="view" aria-labelledby="chat-title">
-      <div class="chat-layout"><aside class="chat-sidebar"><p class="eyebrow">CHAT</p><h2>会话</h2><button class="conversation active">新会话</button><p class="sidebar-note">聊天后端尚未接入</p></aside><section class="chat-panel"><div class="chat-heading"><div><p class="eyebrow">ASSISTANT</p><h1 id="chat-title">知识库聊天</h1></div><span class="status-dot">未连接</span></div><div class="messages"><div class="message assistant">这是聊天界面壳子。当前还没有接入检索和 LLM 生成。</div></div><form id="chat-form" class="chat-input"><input id="chat-input" placeholder="输入问题（当前仅展示界面）" autocomplete="off"><button class="primary-button" type="submit">发送</button></form></section></div>
+      <div class="chat-layout">
+        <aside class="chat-sidebar" aria-label="会话列表">
+          <p class="eyebrow">CHAT</p><h2>我的会话</h2>
+          <button id="chat-new" class="primary-button" type="button">新建会话</button>
+          <div id="chat-conversations"></div>
+          <button id="chat-more" class="ghost-button" type="button" hidden>更多会话</button>
+        </aside>
+        <section class="chat-panel" aria-label="聊天内容">
+          <div class="chat-heading"><div><p class="eyebrow">ASSISTANT</p><h1 id="chat-title">售后助手</h1></div><button id="chat-refresh" class="ghost-button" type="button">刷新历史</button></div>
+          <button id="chat-older" class="ghost-button" type="button" hidden>加载更早消息</button>
+          <div id="chat-messages" role="log" aria-label="消息记录" aria-live="polite"></div>
+          <p id="chat-status" role="status">新建或选择会话开始</p>
+          <form id="chat-form" class="chat-input">
+            <input id="chat-input" aria-label="消息内容" placeholder="例如：查一下我的订单" maxlength="8000" autocomplete="off" required>
+            <button id="chat-send" class="primary-button" type="submit">发送</button>
+          </form>
+        </section>
+      </div>
     </section>
   </main>
 
@@ -376,5 +394,6 @@
   <script src="/static/retrieval.js"></script>
   <script src="/static/business.js"></script>
   <script src="/static/tool-lab.js"></script>
+  <script src="/static/chat.js"></script>
 </body>
 </html>

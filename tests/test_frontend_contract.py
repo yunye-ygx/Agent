@@ -45,11 +45,14 @@ def test_document_table_owns_parse_progress_and_delete_actions() -> None:
     assert "document-actions" not in detail
 
 
-def test_frontend_contains_chat_shell_notice() -> None:
+def test_frontend_connects_chat_ui_for_logged_in_customers() -> None:
     html = (ROOT / "app" / "web" / "index.html").read_text(encoding="utf-8")
 
     assert "聊天" in html
-    assert "尚未接入" in html
+    assert '<script src="/static/chat.js"></script>' in html
+    assert 'id="chat-conversations"' in html
+    assert 'id="chat-messages"' in html
+    assert 'data-view="chat" data-admin-only' not in html
 
 
 def test_frontend_contains_model_provider_settings() -> None:

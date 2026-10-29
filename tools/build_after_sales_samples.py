@@ -12,8 +12,8 @@ from datetime import UTC, date, datetime, time, timedelta
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-OUT = ROOT / "samples" / "after-sales-business-v1"
-CORPUS = ROOT / "samples" / "rag-eval-after-sales-v1" / "corpus"
+OUT = ROOT / "docs" / "samples" / "after-sales-business-v1"
+CORPUS = ROOT / "docs" / "samples" / "rag-eval-after-sales-v1" / "corpus"
 AS_OF = date(2026, 10, 26)
 
 USERS = [

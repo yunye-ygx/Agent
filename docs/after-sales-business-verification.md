@@ -48,7 +48,7 @@ python -X utf8 -m app.cli.seed_business --apply --yes
 可公开复现的业务编号：
 
 - 订单：`SO-2026-1001`～`SO-2026-1012`；客户归属 alice 1001–1004、bob 1005–1008、carol 1009–1012。
-- 设备：`NX100-2024-001`、`NX200-2024-002` … 共 18 台，完整清单位于 `samples/after-sales-business-v1/devices.json`；其中 `NX200-2025-008` 为已退役设备。
+- 设备：`NX100-2024-001`、`NX200-2024-002` … 共 18 台，完整清单位于 `docs/samples/after-sales-business-v1/devices.json`；其中 `NX200-2025-008` 为已退役设备。
 - 工单：`T2026-0001`～`T2026-0012`；状态覆盖 open/in_progress/resolved/closed。
 - 资料：知识库「售后开放资料」中的 `01`～`06`，6 份文档的 `support_open` 均为 1；旧库文档保持未开放。
 

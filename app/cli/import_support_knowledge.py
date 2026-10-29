@@ -37,8 +37,10 @@ from app.db.mysql_session import AsyncSessionFactory
 from app.rag.run_creation import create_run
 
 ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_MANIFEST = ROOT / "samples" / "after-sales-business-v1" / "knowledge-manifest.json"
-CORPUS = ROOT / "samples" / "rag-eval-after-sales-v1" / "corpus"
+DEFAULT_MANIFEST = (
+    ROOT / "docs" / "samples" / "after-sales-business-v1" / "knowledge-manifest.json"
+)
+CORPUS = ROOT / "docs" / "samples" / "rag-eval-after-sales-v1" / "corpus"
 
 
 class KnowledgeImportError(Exception):

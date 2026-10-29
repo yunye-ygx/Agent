@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from test_a1_lifecycle import db  # noqa: F401
 
 from app.business.models import BusinessBase
+from app.chat import models as chat_models  # noqa: F401
 from app.db.mysql_models import Base
 
 

@@ -24,7 +24,12 @@ from app.business.seed_data import (
 from app.core.config import settings
 from app.db.mysql_session import AsyncSessionFactory
 
-DEFAULT_DATA_DIR = Path(__file__).resolve().parents[2] / "samples" / "after-sales-business-v1"
+DEFAULT_DATA_DIR = (
+    Path(__file__).resolve().parents[2]
+    / "docs"
+    / "samples"
+    / "after-sales-business-v1"
+)
 
 
 def _check_password(value: str, username: str) -> str:

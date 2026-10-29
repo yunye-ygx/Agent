@@ -34,9 +34,10 @@ demo = [
     "reportlab>=4.0,<5.0",
 ]
 agent = [
-    "langchain==0.3.27",
-    "langchain-openai==0.3.35",
-    "openai==2.44.0",
+    "langchain==1.4.7",
+    "langchain-openai==1.7.3",
+    "langchain-classic==1.0.8",
+    "openai==2.45.0",
 ]
 
 [tool.setuptools.packages.find]
