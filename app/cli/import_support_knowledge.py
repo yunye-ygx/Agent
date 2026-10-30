@@ -62,7 +62,13 @@ def load_manifest(path: Path = DEFAULT_MANIFEST) -> dict:
         file_path = corpus / document["source"]
         if not file_path.exists():
             raise KnowledgeImportError(f"源文件不存在：{document['source']}")
-        actual = hashlib.sha256(file_path.read_bytes()).hexdigest()
+        # Sample Markdown may be checked out as CRLF on Windows even though
+        # the manifest is generated from canonical LF repository content.
+        # Hash normalized text bytes so a line-ending conversion is not
+        # mistaken for a corpus-content change.
+        actual = hashlib.sha256(
+            file_path.read_bytes().replace(b"\r\n", b"\n")
+        ).hexdigest()
         if actual != document["sha256"]:
             raise KnowledgeImportError(
                 f"源文件哈希已变化：{document['source']}；请审核后重新生成清单"
