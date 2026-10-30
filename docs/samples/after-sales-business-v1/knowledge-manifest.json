@@ -1,0 +1,51 @@
+{
+  "synthetic": true,
+  "version": "support-knowledge-v1",
+  "knowledge_base_name": "售后开放资料",
+  "corpus_directory": "samples/rag-eval-after-sales-v1/corpus",
+  "documents": [
+    {
+      "source": "01_nx100_manual.md",
+      "title": "NX100 产品手册",
+      "sha256": "d0f06ba318a6821dbc3863c235078cd2cdba0ba099be742bf75a4d81420ebb96",
+      "mime_type": "text/markdown"
+    },
+    {
+      "source": "02_nx200_manual.md",
+      "title": "NX200 产品手册",
+      "sha256": "b2be85e28de9e5a42637bfd4c1153c9d4c5042ea22c066d06c529ab2372b8b94",
+      "mime_type": "text/markdown"
+    },
+    {
+      "source": "03_nx100_faults.md",
+      "title": "NX100 故障排查指南",
+      "sha256": "57c42a7edecee5a693715a861889531f686df6ca5045e9059dcff4b5960e6868",
+      "mime_type": "text/markdown"
+    },
+    {
+      "source": "04_nx200_network.md",
+      "title": "NX200 网络故障指南",
+      "sha256": "cddbdb1066679260f98d35a9e434d96506dea41c61f008084f4a5e687292738e",
+      "mime_type": "text/markdown"
+    },
+    {
+      "source": "05_safety_and_service.md",
+      "title": "安全与服务规则",
+      "sha256": "197386540cd9065aefb0296088fa5ab66d3e4cae1f66b7d6f48255999d25cbbd",
+      "mime_type": "text/markdown"
+    },
+    {
+      "source": "06_nx100_firmware_notice.md",
+      "title": "NX100 固件公告",
+      "sha256": "2d9df960ead8cf8524dcec40efa1ac377d0e241c53a6c16cc00f5ce0d2c8a820",
+      "mime_type": "text/markdown"
+    }
+  ],
+  "excluded_sources": [
+    "07_archived_calibration.md",
+    "08_ticket_cover.md",
+    "09_ticket_network.md",
+    "10_ticket_unverified.md",
+    "eval/dev_cases.jsonl"
+  ]
+}

@@ -1,0 +1,204 @@
+{
+  "synthetic": true,
+  "as_of": "2026-10-26",
+  "devices": [
+    {
+      "id": "device-2026-001",
+      "serial_no": "NX100-2024-001",
+      "order_item_id": "item-001-1",
+      "user_id": "user-alice-001",
+      "model_code": "NX100",
+      "firmware_version": "1.4.2",
+      "purchased_days_before_as_of": 700,
+      "warranty_days": 730,
+      "status": "active"
+    },
+    {
+      "id": "device-2026-002",
+      "serial_no": "NX200-2024-002",
+      "order_item_id": "item-002-1",
+      "user_id": "user-alice-001",
+      "model_code": "NX200",
+      "firmware_version": "2.0.3",
+      "purchased_days_before_as_of": 800,
+      "warranty_days": 365,
+      "status": "active"
+    },
+    {
+      "id": "device-2026-003",
+      "serial_no": "NX100-2026-003",
+      "order_item_id": "item-003-1",
+      "user_id": "user-alice-001",
+      "model_code": "NX100",
+      "firmware_version": "1.6.0",
+      "purchased_days_before_as_of": 30,
+      "warranty_days": 730,
+      "status": "active"
+    },
+    {
+      "id": "device-2026-004",
+      "serial_no": "NX200-2025-004",
+      "order_item_id": "item-004-1",
+      "user_id": "user-alice-001",
+      "model_code": "NX200",
+      "firmware_version": "2.1.0",
+      "purchased_days_before_as_of": 400,
+      "warranty_days": 365,
+      "status": "active"
+    },
+    {
+      "id": "device-2026-005",
+      "serial_no": "NX100-2025-005",
+      "order_item_id": "item-005-1",
+      "user_id": "user-bob-001",
+      "model_code": "NX100",
+      "firmware_version": "1.2.0",
+      "purchased_days_before_as_of": 200,
+      "warranty_days": 365,
+      "status": "active"
+    },
+    {
+      "id": "device-2026-006",
+      "serial_no": "NX200-2024-006",
+      "order_item_id": "item-006-1",
+      "user_id": "user-bob-001",
+      "model_code": "NX200",
+      "firmware_version": "2.0.1",
+      "purchased_days_before_as_of": 750,
+      "warranty_days": 730,
+      "status": "active"
+    },
+    {
+      "id": "device-2026-007",
+      "serial_no": "NX100-2025-007",
+      "order_item_id": "item-007-1",
+      "user_id": "user-bob-001",
+      "model_code": "NX100",
+      "firmware_version": "1.5.0",
+      "purchased_days_before_as_of": 500,
+      "warranty_days": 365,
+      "status": "active"
+    },
+    {
+      "id": "device-2026-008",
+      "serial_no": "NX200-2025-008",
+      "order_item_id": "item-008-1",
+      "user_id": "user-bob-001",
+      "model_code": "NX200",
+      "firmware_version": "2.0.0",
+      "purchased_days_before_as_of": 1000,
+      "warranty_days": 365,
+      "status": "retired"
+    },
+    {
+      "id": "device-2026-009",
+      "serial_no": "NX100-2026-009",
+      "order_item_id": "item-009-1",
+      "user_id": "user-carol-001",
+      "model_code": "NX100",
+      "firmware_version": "1.6.1",
+      "purchased_days_before_as_of": 90,
+      "warranty_days": 730,
+      "status": "active"
+    },
+    {
+      "id": "device-2026-010",
+      "serial_no": "NX100-2025-010",
+      "order_item_id": "item-009-1",
+      "user_id": "user-carol-001",
+      "model_code": "NX100",
+      "firmware_version": "1.4.2",
+      "purchased_days_before_as_of": 600,
+      "warranty_days": 730,
+      "status": "active"
+    },
+    {
+      "id": "device-2026-011",
+      "serial_no": "NX100-2025-011",
+      "order_item_id": "item-009-1",
+      "user_id": "user-carol-001",
+      "model_code": "NX100",
+      "firmware_version": "1.5.0",
+      "purchased_days_before_as_of": 365,
+      "warranty_days": 365,
+      "status": "active"
+    },
+    {
+      "id": "device-2026-012",
+      "serial_no": "NX200-2026-012",
+      "order_item_id": "item-010-1",
+      "user_id": "user-carol-001",
+      "model_code": "NX200",
+      "firmware_version": "2.1.0",
+      "purchased_days_before_as_of": 100,
+      "warranty_days": 365,
+      "status": "active"
+    },
+    {
+      "id": "device-2026-013",
+      "serial_no": "NX200-2024-013",
+      "order_item_id": "item-010-1",
+      "user_id": "user-carol-001",
+      "model_code": "NX200",
+      "firmware_version": "2.0.3",
+      "purchased_days_before_as_of": 730,
+      "warranty_days": 730,
+      "status": "active"
+    },
+    {
+      "id": "device-2026-014",
+      "serial_no": "NX200-2024-014",
+      "order_item_id": "item-010-1",
+      "user_id": "user-carol-001",
+      "model_code": "NX200",
+      "firmware_version": "2.0.0",
+      "purchased_days_before_as_of": 731,
+      "warranty_days": 730,
+      "status": "active"
+    },
+    {
+      "id": "device-2026-015",
+      "serial_no": "NX100-2026-015",
+      "order_item_id": "item-011-1",
+      "user_id": "user-carol-001",
+      "model_code": "NX100",
+      "firmware_version": "1.6.0",
+      "purchased_days_before_as_of": 50,
+      "warranty_days": 365,
+      "status": "active"
+    },
+    {
+      "id": "device-2026-016",
+      "serial_no": "NX100-2025-016",
+      "order_item_id": "item-011-1",
+      "user_id": "user-carol-001",
+      "model_code": "NX100",
+      "firmware_version": "1.2.0",
+      "purchased_days_before_as_of": 366,
+      "warranty_days": 365,
+      "status": "active"
+    },
+    {
+      "id": "device-2026-017",
+      "serial_no": "NX200-2026-017",
+      "order_item_id": "item-012-1",
+      "user_id": "user-carol-001",
+      "model_code": "NX200",
+      "firmware_version": "2.1.0",
+      "purchased_days_before_as_of": 120,
+      "warranty_days": 730,
+      "status": "active"
+    },
+    {
+      "id": "device-2026-018",
+      "serial_no": "NX200-2024-018",
+      "order_item_id": "item-012-1",
+      "user_id": "user-carol-001",
+      "model_code": "NX200",
+      "firmware_version": "2.0.1",
+      "purchased_days_before_as_of": 900,
+      "warranty_days": 730,
+      "status": "active"
+    }
+  ]
+}

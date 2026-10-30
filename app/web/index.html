@@ -3,51 +3,399 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>RAG Demo 知识库</title>
+  <title>澄印打印机售后</title>
   <link rel="stylesheet" href="/static/app.css">
-  <link rel="stylesheet" href="/static/app-model.css">
+  <link rel="stylesheet" href="/static/app-model.css?v=20261022-model-catalog">
+  <link rel="stylesheet" href="/static/retrieval.css">
+  <link rel="stylesheet" href="/static/business.css">
+  <link rel="stylesheet" href="/static/chat.css">
 </head>
-<body>
+<body class="not-authenticated" data-authenticated="false">
   <header class="topbar">
-    <a class="brand" href="/">RAG Demo</a>
+    <a class="brand" href="/">澄印售后</a>
     <nav class="topnav" aria-label="主导航">
-      <button class="nav-item active" data-view="knowledge">知识库</button>
+      <button class="nav-item" data-view="business">工作台</button>
+      <button class="nav-item" data-view="orders">订单</button>
+      <button class="nav-item" data-view="devices">设备</button>
+      <button class="nav-item" data-view="tickets">工单</button>
+      <button class="nav-item" data-view="tool-lab">工具调试</button>
+      <button class="nav-item" data-view="customers" data-admin-only>客户</button>
+      <button class="nav-item" data-view="knowledge" data-admin-only>知识库</button>
+      <button class="nav-item" data-view="retrieval" data-admin-only>检索实验</button>
+      <button class="nav-item" data-view="models" data-admin-only>模型配置</button>
       <button class="nav-item" data-view="chat">聊天</button>
-      <button class="nav-item" data-view="models">模型配置</button>
     </nav>
-    <span class="environment">LOCAL</span>
+    <div id="identity-bar" class="identity-bar">
+      <span id="identity-avatar" class="identity-avatar" aria-hidden="true">·</span>
+      <span class="identity-copy">
+        <span id="identity-name">未登录</span>
+        <span id="identity-role"></span>
+      </span>
+      <button id="logout-button" class="ghost-button" hidden>退出</button>
+    </div>
   </header>
   <main class="shell">
-    <section id="knowledge-view" class="view active-view" aria-labelledby="knowledge-title">
+    <section id="login-view" class="view active-view auth-view" aria-labelledby="login-title">
+      <div class="auth-split">
+        <aside class="auth-brand">
+          <a class="auth-brand-mark" href="/">澄印售后</a>
+          <div class="auth-brand-copy">
+            <p class="eyebrow">AFTER-SALES WORKSPACE</p>
+            <h1 id="login-title">打印机售后<br>业务底座</h1>
+            <p>订单、设备、工单、开放资料与真实 Agent 工具，共用同一套后端身份和业务服务。</p>
+            <ul class="auth-feature-list">
+              <li><span>01</span>客户只能读取自己的订单、设备和工单</li>
+              <li><span>02</span>创建工单真实入库，并用操作键防止重复提交</li>
+              <li><span>03</span>工具调试页展示后端身份、Observation 与耗时</li>
+            </ul>
+          </div>
+          <p class="auth-brand-foot">会话、CSRF 与来源校验由服务端执行，页面参数不能伪造执行身份。</p>
+        </aside>
+        <div class="auth-panel">
+          <form id="login-form" class="auth-card" aria-labelledby="login-form-title">
+            <header class="auth-card-head">
+              <h2 id="login-form-title">登录</h2>
+              <p>使用你的售后账号继续</p>
+            </header>
+            <label class="field">
+              <span>用户名</span>
+              <input id="login-username" name="username" autocomplete="username" required maxlength="32" placeholder="例如 alice">
+            </label>
+            <label class="field">
+              <span>密码</span>
+              <span class="password-input">
+                <input id="login-password" name="password" type="password" autocomplete="current-password" required maxlength="128" placeholder="输入登录密码">
+                <button type="button" class="password-toggle" data-toggle-password="login-password" aria-label="显示密码">显示</button>
+              </span>
+            </label>
+            <p id="login-message" class="form-message" role="status" aria-live="polite"></p>
+            <button class="primary-button block-button" type="submit">登录</button>
+            <p class="auth-switch">还没有账号？<button type="button" class="link-button" data-auth-target="register">注册客户账号</button></p>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <section id="register-view" class="view auth-view" aria-labelledby="register-title">
+      <div class="auth-split">
+        <aside class="auth-brand">
+          <a class="auth-brand-mark" href="/">澄印售后</a>
+          <div class="auth-brand-copy">
+            <p class="eyebrow">CREATE ACCOUNT</p>
+            <h1 id="register-title">创建客户账号</h1>
+            <p>公开注册只能创建客户角色。管理员账号由受控命令创建，不在页面上开放。</p>
+            <ul class="auth-feature-list">
+              <li><span>01</span>用户名规范化后唯一，密码使用 Argon2 哈希</li>
+              <li><span>02</span>注册成功后即可查看自己的订单与设备</li>
+              <li><span>03</span>写请求校验 CSRF 与来源，身份由后端注入</li>
+            </ul>
+          </div>
+          <p class="auth-brand-foot">密码不会写入源码、文档或日志。至少 12 个字符，建议使用密码管理器生成。</p>
+        </aside>
+        <div class="auth-panel">
+          <form id="register-form" class="auth-card" aria-labelledby="register-form-title">
+            <header class="auth-card-head">
+              <h2 id="register-form-title">注册客户账号</h2>
+              <p>填写账号信息后自动登录</p>
+            </header>
+            <label class="field">
+              <span>用户名</span>
+              <input id="register-username" name="username" autocomplete="username" required minlength="3" maxlength="32" pattern="[a-zA-Z0-9_]{3,32}" placeholder="3～32 位字母、数字或下划线">
+            </label>
+            <label class="field">
+              <span>显示名</span>
+              <input id="register-display-name" name="display_name" autocomplete="name" required maxlength="64" placeholder="例如 张三">
+            </label>
+            <label class="field">
+              <span>密码</span>
+              <span class="password-input">
+                <input id="register-password" name="password" type="password" autocomplete="new-password" required minlength="12" maxlength="128" placeholder="至少 12 个字符">
+                <button type="button" class="password-toggle" data-toggle-password="register-password" aria-label="显示密码">显示</button>
+              </span>
+            </label>
+            <label class="field">
+              <span>确认密码</span>
+              <span class="password-input">
+                <input id="register-password-confirm" name="password_confirm" type="password" autocomplete="new-password" required minlength="12" maxlength="128" placeholder="再次输入密码">
+                <button type="button" class="password-toggle" data-toggle-password="register-password-confirm" aria-label="显示密码">显示</button>
+              </span>
+            </label>
+            <p id="register-message" class="form-message" role="status" aria-live="polite"></p>
+            <button class="primary-button block-button" type="submit">注册并登录</button>
+            <p class="auth-switch">已经有账号？<button type="button" class="link-button" data-auth-target="login">返回登录</button></p>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <section id="business-view" class="view" aria-labelledby="business-title">
+      <div class="page-heading">
+        <div><p class="eyebrow">AFTER SALES</p><h1 id="business-title">售后工作台</h1><p id="business-welcome" class="muted"></p></div>
+      </div>
+      <div id="business-stats" class="business-stats" aria-live="polite"><div class="loading-state">正在读取业务数据…</div></div>
+      <div class="card business-guide">
+        <div class="card-heading"><h2>操作路径</h2><span class="muted">页面与工具复用同一业务服务</span></div>
+        <div class="guide-grid">
+          <div><strong>客户</strong><p>订单 → 设备 → 创建工单 → 查看处理记录；按型号检索已开放资料。</p></div>
+          <div><strong>管理员</strong><p>录入订单 → 登记设备 → 处理工单 → 在「资料开放」中维护客户可检索的文档。</p></div>
+          <div><strong>调试</strong><p>工具调试页展示当前后端身份、JSON Schema、Observation、耗时和实际尝试次数；创建工单会先预留操作键。</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="orders-view" class="view" aria-labelledby="orders-title">
+      <div class="page-heading">
+        <div><p class="eyebrow">ORDERS</p><h1 id="orders-title">订单</h1><p class="muted">客户只能查看自己的订单；管理员可录入订单并标记状态。</p></div>
+        <button id="toggle-order-form" class="primary-button" data-admin-only>录入订单</button>
+      </div>
+      <div id="order-create-card" class="card hidden" data-admin-only>
+        <div class="card-heading"><h2>录入订单</h2><span class="muted">金额由后端使用 Decimal 计算</span></div>
+        <form id="order-form" class="business-form">
+          <div class="search-row">
+            <label>查找客户<input id="order-customer-query" maxlength="64" placeholder="用户名或显示名"></label>
+            <button id="search-order-customers" class="ghost-button" type="button">查找客户</button>
+          </div>
+          <label>选择客户<select id="order-customer" required><option value="">请先查找客户</option></select></label>
+          <label>订单号<input id="order-no" required maxlength="64" placeholder="例如 SO-2026-1001"></label>
+          <div id="order-item-rows" class="order-item-rows"></div>
+          <button id="add-order-item" class="ghost-button" type="button">添加明细</button>
+          <div class="action-row"><button id="order-submit" class="primary-button" type="submit">保存订单</button></div>
+          <p id="order-form-message" class="field-hint" role="status"></p>
+        </form>
+      </div>
+      <div class="card">
+        <div class="card-heading"><h2>订单列表</h2><span class="muted">默认按创建时间倒序</span></div>
+        <div id="order-list" class="table-wrap" aria-live="polite"></div>
+      </div>
+    </section>
+
+    <section id="order-detail-view" class="view" aria-labelledby="order-detail-title">
+      <div class="page-heading compact">
+        <div>
+          <button id="back-to-orders" class="back-button" type="button">← 返回订单列表</button>
+          <p class="eyebrow">ORDER DETAIL</p>
+          <h1 id="order-detail-title">订单详情</h1>
+        </div>
+      </div>
+      <div id="order-detail" class="card"></div>
+    </section>
+
+    <section id="devices-view" class="view" aria-labelledby="devices-title">
+      <div class="page-heading">
+        <div><p class="eyebrow">DEVICES</p><h1 id="devices-title">设备</h1><p class="muted">设备归属从订单推导；保修截止日包含当天。</p></div>
+        <button id="toggle-device-form" class="primary-button" data-admin-only>登记设备</button>
+      </div>
+      <div id="device-create-card" class="card hidden" data-admin-only>
+        <div class="card-heading"><h2>登记设备</h2><span class="muted">已登记数量不能超过订单明细数量</span></div>
+        <form id="device-form" class="business-form">
+          <div class="search-row">
+            <label>订单号<input id="device-order-no" required maxlength="64" placeholder="输入订单号"></label>
+            <button id="load-order-items" class="ghost-button" type="button">查找订单明细</button>
+          </div>
+          <label>订单明细<select id="device-order-item" required><option value="">请先查找订单</option></select></label>
+          <div class="form-grid">
+            <label>设备编号<input id="device-serial" required maxlength="64" placeholder="例如 NX100-2026-001"></label>
+            <label>型号<select id="device-model"><option value="NX100">NX100</option><option value="NX200">NX200</option></select></label>
+            <label>固件版本<input id="device-firmware" maxlength="32" placeholder="例如 1.6.0"></label>
+            <label>购买日期<input id="device-purchased" type="date" required></label>
+            <label>保修截止日<input id="device-warranty" type="date" required></label>
+          </div>
+          <div class="action-row"><button id="device-submit" class="primary-button" type="submit">登记设备</button></div>
+          <p id="device-form-message" class="field-hint" role="status"></p>
+        </form>
+      </div>
+      <div class="card">
+        <div class="card-heading"><h2>设备列表</h2><span class="muted">保修状态按请求当日计算</span></div>
+        <div id="device-list" class="table-wrap" aria-live="polite"></div>
+      </div>
+    </section>
+
+    <section id="device-detail-view" class="view" aria-labelledby="device-detail-title">
+      <div class="page-heading compact">
+        <div>
+          <button id="back-to-devices" class="back-button" type="button">← 返回设备列表</button>
+          <p class="eyebrow">DEVICE DETAIL</p>
+          <h1 id="device-detail-title">设备详情</h1>
+        </div>
+      </div>
+      <div id="device-detail" class="card"></div>
+    </section>
+
+    <section id="tickets-view" class="view" aria-labelledby="tickets-title">
+      <div class="page-heading">
+        <div><p class="eyebrow">TICKETS</p><h1 id="tickets-title">工单</h1><p class="muted">过保设备仍可提交工单。创建会真实写入数据库，并使用后端操作键去重。</p></div>
+      </div>
+      <div id="ticket-create-card" class="card">
+        <div class="card-heading"><h2>创建工单</h2><span class="status-pill status-open">会真实创建工单</span></div>
+        <form id="ticket-form" class="business-form">
+          <label>设备<select id="ticket-device" required><option value="">正在读取设备…</option></select></label>
+          <label>主题<input id="ticket-subject" required maxlength="120" placeholder="例如 NX100 报 E17"></label>
+          <label>故障描述<textarea id="ticket-description" required maxlength="4000" rows="4" placeholder="描述现象、已尝试的步骤和当前固件版本"></textarea></label>
+          <div class="action-row">
+            <button id="ticket-submit" class="primary-button" type="submit">提交真实工单</button>
+            <button id="ticket-reconcile" class="ghost-button" type="button" hidden>查询操作结果</button>
+          </div>
+          <p id="ticket-operation-state" class="operation-state" role="status"></p>
+          <p id="ticket-form-message" class="field-hint" role="status"></p>
+        </form>
+      </div>
+      <div class="card">
+        <div class="card-heading">
+          <h2>工单列表</h2>
+          <label class="inline-field">状态<select id="ticket-status-filter">
+            <option value="">全部状态</option><option value="open">待处理</option><option value="in_progress">处理中</option><option value="resolved">已解决</option><option value="closed">已关闭</option>
+          </select></label>
+        </div>
+        <div id="ticket-list" class="table-wrap" aria-live="polite"></div>
+      </div>
+    </section>
+
+    <section id="ticket-detail-view" class="view" aria-labelledby="ticket-detail-title">
+      <div class="page-heading compact">
+        <div>
+          <button id="back-to-tickets" class="back-button" type="button">← 返回工单列表</button>
+          <p class="eyebrow">TICKET DETAIL</p>
+          <h1 id="ticket-detail-title">工单详情</h1>
+        </div>
+      </div>
+      <div id="ticket-detail" class="card"></div>
+    </section>
+
+    <section id="tool-lab-view" class="view" aria-labelledby="tool-lab-title">
+      <div class="page-heading"><div><p class="eyebrow">TOOL LAB</p><h1 id="tool-lab-title">工具调试</h1><p id="tool-identity" class="muted">正在读取当前身份…</p></div><button id="refresh-tools" class="ghost-button">刷新目录</button></div>
+      <div class="tool-layout">
+        <aside class="card tool-sidebar"><div class="card-heading"><h2>工具目录</h2></div><div id="tool-list" class="tool-list" aria-live="polite"></div></aside>
+        <section class="card tool-execute">
+          <div class="card-heading"><h2>执行</h2><span class="muted">参数来自服务端 JSON Schema</span></div>
+          <form id="tool-execute-form" class="business-form">
+            <div class="tool-operation-row"><span>操作键：</span><code id="tool-operation-id">尚未预留</code><button id="tool-clear-operation" class="ghost-button" type="button" hidden>清除操作键</button></div>
+            <div id="tool-parameters" class="tool-parameters"></div>
+            <div class="action-row"><button id="tool-submit" class="primary-button" type="submit">执行工具</button><button id="tool-reconcile" class="ghost-button" type="button">查询最近操作结果</button></div>
+            <p id="tool-status" class="field-hint" role="status"></p>
+          </form>
+          <div class="tool-output">
+            <p id="tool-observation-meta" class="observation-meta"></p>
+            <pre id="tool-result" class="tool-result" aria-live="polite"></pre>
+          </div>
+        </section>
+      </div>
+    </section>
+
+    <section id="customers-view" class="view" aria-labelledby="customers-title">
+      <div class="page-heading"><div><p class="eyebrow">CUSTOMERS</p><h1 id="customers-title">客户查询</h1><p class="muted">仅管理员；返回最少字段。</p></div></div>
+      <form id="customer-search-form" class="card business-form search-row">
+        <label>用户名或显示名<input id="customer-query" maxlength="64" placeholder="留空查看全部"></label>
+        <button class="primary-button" type="submit">查询</button>
+      </form>
+      <div class="card"><div id="customer-list" class="table-wrap" aria-live="polite"></div></div>
+    </section>
+
+    <section id="retrieval-view" class="view" aria-labelledby="retrieval-title">
+      <div class="page-heading"><div><p class="eyebrow">RETRIEVAL LAB</p><h1 id="retrieval-title">在线检索实验</h1><p class="muted">检查候选、评分与筛选过程。此功能不调用回答生成模型。</p></div><button id="retrieval-refresh" class="ghost-button">刷新配置</button></div>
+      <div class="retrieval-layout">
+        <form id="retrieval-form" class="card retrieval-controls">
+          <h2>检索条件</h2>
+          <label>知识库<select id="retrieval-kb" required><option value="">正在读取…</option></select></label>
+          <label>文档范围<select id="retrieval-doc"><option value="">全部已发布文档</option></select></label>
+          <label>原始问题<textarea id="retrieval-query" required maxlength="4096" rows="4" placeholder="例如：打印机出现 E03 时如何处理？"></textarea></label>
+          <div class="retrieval-fields"><label>候选 Top K<input id="retrieval-k" type="number" value="50" min="1" max="500" required></label><label>展示 Top N<input id="retrieval-n" type="number" value="5" min="1" max="50" required></label></div>
+          <div class="retrieval-fields"><label>分数阈值<input id="retrieval-threshold" type="number" value="0.2" step="0.01" min="-1" max="1" required></label><label>模型权重<input id="retrieval-weight" type="number" value="0.7" step="0.01" min="0" max="1" required></label></div>
+          <p class="field-hint">模型权重仅用于候选最终评分；关键词权重为 1 − 模型权重。分数不代表答案可信概率。</p>
+          <label>评分模式<select id="retrieval-mode"><option value="auto">自动：有 Rerank 则使用，否则用向量</option><option value="vector">关键词 + 向量 cosine</option><option value="rerank">关键词 + Rerank（必须有配置）</option></select></label>
+          <label>Rerank 配置<select id="retrieval-rerank"><option value="">自动选择可用配置</option></select></label>
+          <details><summary>字段权重与说明</summary><div class="retrieval-fields"><label>标题权重<input id="retrieval-title-weight" type="number" value="2" min="0" max="100" step="0.1" required></label><label>正文权重<input id="retrieval-content-weight" type="number" value="1" min="0" max="100" step="0.1" required></label></div><p class="field-hint">标题使用章节路径，缺失时使用文件名。第一版使用中文单字／英数标识符分词与均匀查询词权重；不会生成问题或关键词。</p></details>
+          <button id="retrieval-submit" class="primary-button" type="submit">运行检索</button>
+          <p class="field-hint">仅限本机管理员。实验快照保留 30 分钟，绑定当前浏览器会话和登录账号。</p>
+        </form>
+        <div class="retrieval-output">
+          <p id="retrieval-status" role="status" aria-live="polite">选择知识库并输入问题，查看最终结果和完整候选。</p>
+          <div id="retrieval-result" aria-busy="false"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="knowledge-view" class="view" aria-labelledby="knowledge-title">
       <div class="page-heading"><div><p class="eyebrow">WORKSPACE</p><h1 id="knowledge-title">知识库</h1><p class="muted">管理文件、解析版本和可检索 Chunk。</p></div><button id="new-kb-button" class="primary-button">新建知识库</button></div>
-      <div id="kb-list-card" class="card"><div class="card-heading"><h2>知识库列表</h2><button id="refresh-kb" class="ghost-button">刷新</button></div><div id="kb-list" class="table-wrap" aria-live="polite"></div></div>
+      <div id="kb-list-card" class="card"><div class="card-heading"><h2>知识库列表</h2><div class="action-row"><button id="delete-selected-kbs" class="danger-button" disabled>删除所选（0）</button><button id="refresh-kb" class="ghost-button">刷新</button></div></div><div id="kb-list" class="table-wrap" aria-live="polite"></div></div>
       <div id="kb-detail" class="hidden"><div class="page-heading compact"><div><button id="back-to-kbs" class="back-button">← 知识库</button><h1 id="kb-title"></h1><p id="kb-description" class="muted"></p></div><label class="upload-button">上传文档<input id="document-upload" type="file" accept=".pdf,.md,.txt"></label></div><div class="card"><div class="card-heading"><h2>文档</h2><span id="document-summary" class="muted"></span></div><div id="document-list" class="table-wrap"></div></div></div>
       <div id="document-detail" class="hidden"><div class="page-heading compact"><div><button id="back-to-documents" class="back-button">← 文档列表</button><h1 id="document-title"></h1></div></div><div class="detail-grid"><section class="card preview-card"><div class="card-heading"><h2>原文档</h2><span class="muted">MinIO</span></div><iframe id="document-preview" title="原文档预览"></iframe></section><section class="card chunks-card"><div class="card-heading"><h2>Chunks</h2><span id="chunk-count" class="muted"></span></div><div id="chunk-list" class="chunk-list"></div><article id="chunk-content" class="chunk-content empty-state">选择一个 Chunk 查看内容</article></section></div></div>
     </section>
+
     <section id="models-view" class="view" aria-labelledby="models-title">
       <div class="page-heading">
-        <div>
-          <p class="eyebrow">MODEL CONTROL</p>
-          <h1 id="models-title">模型配置</h1>
-          <p class="muted">保存供应商连接和模型组合，后续解析、聊天等流程可以按配置 ID 选择。</p>
-        </div>
+        <div><p class="eyebrow">MODEL CONTROL</p><h1 id="models-title">模型配置</h1><p class="muted">管理供应商连接和模型组合；检索实验会按已发布文档的 Embedding 模型匹配连接。</p></div>
         <div class="action-row"><button id="refresh-models" class="ghost-button">刷新</button><button id="new-model-button" class="primary-button">新增模型配置</button></div>
       </div>
-      <div id="model-provider-list" class="provider-grid" aria-live="polite" aria-busy="true">
-        <div class="loading-state">正在读取模型配置…</div>
-      </div>
-      <div class="card model-note">
-        <div class="card-heading"><h2>配置说明</h2><span class="muted">安全边界</span></div>
-        <div class="model-note-body">
-          <p>API Key 只保存在服务端，页面只显示掩码；编辑已有配置时留空即可保留原密钥。</p>
-          <p>供应商和模型选项由后端目录接口提供。保存后的配置会获得唯一 ID，后续业务可以按 ID 选择，也可以设置一个默认配置。</p>
-        </div>
+      <div id="model-provider-list" class="provider-grid" aria-live="polite" aria-busy="true"><div class="loading-state">正在读取模型配置…</div></div>
+      <div class="card model-note"><div class="card-heading"><h2>配置说明</h2><span class="muted">安全边界</span></div><div class="model-note-body"><p>API Key 只保存在服务端，页面只显示掩码；编辑已有配置时留空即可保留原密钥。</p><p>千问模型选项由服务端实时查询百炼模型目录。当前离线建库仍使用环境配置；保存或设为默认不会自动更改已有知识库的向量模型，切换向量模型需要重建知识库。</p></div></div>
+    </section>
+
+    <section id="chat-view" class="view" aria-labelledby="chat-title">
+      <div class="chat-layout">
+        <aside class="chat-sidebar" aria-label="会话列表">
+          <p class="eyebrow">CHAT</p><h2>我的会话</h2>
+          <button id="chat-new" class="primary-button" type="button">新建会话</button>
+          <div id="chat-conversations"></div>
+          <button id="chat-more" class="ghost-button" type="button" hidden>更多会话</button>
+        </aside>
+        <section class="chat-panel" aria-label="聊天内容">
+          <div class="chat-heading"><div><p class="eyebrow">ASSISTANT</p><h1 id="chat-title">售后助手</h1></div><button id="chat-refresh" class="ghost-button" type="button">刷新历史</button></div>
+          <button id="chat-older" class="ghost-button" type="button" hidden>加载更早消息</button>
+          <div id="chat-messages" role="log" aria-label="消息记录" aria-live="polite"></div>
+          <p id="chat-status" role="status">新建或选择会话开始</p>
+          <form id="chat-form" class="chat-input">
+            <input id="chat-input" aria-label="消息内容" placeholder="例如：查一下我的订单" maxlength="8000" autocomplete="off" required>
+            <button id="chat-send" class="primary-button" type="submit">发送</button>
+            <button id="chat-stop" class="ghost-button" type="button" hidden>停止</button>
+            <button id="chat-retry" class="ghost-button" type="button" hidden>重试</button>
+          </form>
+        </section>
       </div>
     </section>
-    <section id="chat-view" class="view" aria-labelledby="chat-title"><div class="chat-layout"><aside class="chat-sidebar"><p class="eyebrow">CHAT</p><h2>会话</h2><button class="conversation active">新会话</button><p class="sidebar-note">聊天后端尚未接入</p></aside><section class="chat-panel"><div class="chat-heading"><div><p class="eyebrow">ASSISTANT</p><h1 id="chat-title">知识库聊天</h1></div><span class="status-dot">未连接</span></div><div class="messages"><div class="message assistant">这是聊天界面壳子。当前还没有接入检索和 LLM 生成。</div></div><form id="chat-form" class="chat-input"><input id="chat-input" placeholder="输入问题（当前仅展示界面）" autocomplete="off"><button class="primary-button" type="submit">发送</button></form></section></div></section>
   </main>
+
   <dialog id="new-kb-dialog"><form method="dialog" id="new-kb-form"><div class="dialog-heading"><h2>新建知识库</h2><button value="cancel" class="icon-button" aria-label="关闭">×</button></div><label>名称<input id="kb-name" required maxlength="200"></label><label>描述<textarea id="kb-description-input" maxlength="1000"></textarea></label><div class="dialog-actions"><button value="cancel" class="ghost-button">取消</button><button value="default" class="primary-button">创建</button></div></form></dialog>
-  <dialog id="model-config-dialog"><form method="dialog" id="model-config-form"><div class="dialog-heading"><div><p class="eyebrow">MODEL CONNECTION</p><h2 id="model-dialog-title">新增模型配置</h2></div><button value="cancel" class="icon-button" aria-label="关闭">×</button></div><input id="model-config-id" type="hidden"><label>供应商<select id="model-provider" required></select><small id="model-provider-hint" class="field-hint"></small></label><label>配置名称<input id="model-display-name" required maxlength="120" placeholder="例如：生产智谱 GLM"></label><label>Base URL<input id="model-base-url" required maxlength="512" placeholder="https://..." inputmode="url"></label><label>API Key<input id="model-api-key" maxlength="2048" type="password" autocomplete="new-password" placeholder="编辑时留空则保留原密钥"></label><div class="form-grid"><label>Chat 模型<select id="model-chat-model" required></select></label><label>自定义 Chat 模型<input id="model-chat-custom" class="hidden" maxlength="255" placeholder="输入模型名"></label></div><div class="form-grid"><label>Embedding 模型<select id="model-embedding-model"><option value="">不使用 Embedding</option></select></label><label>自定义 Embedding 模型<input id="model-embedding-custom" class="hidden" maxlength="255" placeholder="输入模型名"></label></div><label>向量维度<input id="model-embedding-dimension" type="number" min="1" max="100000" placeholder="例如：2048"></label><label class="checkbox-label"><input id="model-set-default" type="checkbox"> 保存后设为默认模型</label><div class="dialog-actions"><button value="cancel" class="ghost-button">取消</button><button value="default" class="primary-button" id="save-model-button">保存配置</button></div></form></dialog>
-  <div id="toast" class="toast" role="status"></div><script src="/static/app.js"></script>
+  <dialog id="rename-kb-dialog"><form method="dialog" id="rename-kb-form"><div class="dialog-heading"><h2>修改知识库名称</h2><button value="cancel" class="icon-button" aria-label="关闭">×</button></div><label>名称<input id="rename-kb-name" required maxlength="200"></label><div class="dialog-actions"><button value="cancel" class="ghost-button">取消</button><button value="default" class="primary-button">保存</button></div></form></dialog>
+  <dialog id="model-config-dialog" class="model-dialog" aria-labelledby="model-dialog-title">
+    <form method="dialog" id="model-config-form">
+      <header class="model-dialog-header">
+        <div><p class="eyebrow">MODEL CONNECTION</p><h2 id="model-dialog-title">新增模型配置</h2><p class="muted">先配置连接，再从供应商读取模型目录。</p></div>
+        <button value="cancel" class="icon-button" aria-label="关闭" formnovalidate>×</button>
+      </header>
+      <input id="model-config-id" type="hidden">
+      <div class="model-dialog-body">
+        <section class="model-dialog-panel model-connection-panel" aria-labelledby="model-connection-title">
+          <div class="model-section-title"><span class="model-step">01</span><div><h3 id="model-connection-title">连接信息</h3><p>选择供应商并填写调用凭证</p></div></div>
+          <label class="model-field">供应商<select id="model-provider" required></select><small id="model-provider-hint" class="field-hint"></small></label>
+          <label class="model-field">配置名称<input id="model-display-name" required maxlength="120" placeholder="例如：开发环境千问"></label>
+          <label class="model-field">Base URL<input id="model-base-url" required maxlength="512" placeholder="https://..." inputmode="url"></label>
+          <label class="model-field">API Key<input id="model-api-key" maxlength="2048" type="password" autocomplete="new-password" placeholder="输入服务商 API Key"><small class="field-hint">编辑时留空会继续使用已保存的密钥。</small></label>
+          <div class="model-credential-note">模型目录由服务端请求供应商。页面只会显示模型信息，不会读取已保存的完整 API Key。</div>
+        </section>
+        <section class="model-dialog-panel model-choices-panel" aria-labelledby="model-choices-title">
+          <div class="model-section-title model-choices-heading"><span class="model-step">02</span><div><h3 id="model-choices-title">选择模型</h3><p>按当前连接读取可选模型</p></div><button id="model-refresh-models" class="ghost-button" type="button">获取模型</button></div>
+          <p id="model-discovery-status" class="model-discovery-status" role="status" aria-live="polite">填写连接信息后获取模型目录。</p>
+          <label id="model-chat-search-field" class="model-field">搜索文本模型<input id="model-chat-search" type="search" placeholder="按名称或模型 ID 搜索"></label>
+          <label class="model-field"><span id="model-chat-label">Chat 模型</span><select id="model-chat-model" required><option value="">请选择模型</option></select></label>
+          <label id="model-chat-custom-field" class="model-field hidden">手动输入模型 ID<input id="model-chat-custom" maxlength="255" placeholder="例如：qwen-plus"></label>
+          <p id="model-chat-detail" class="model-choice-detail">选择模型后会显示目录说明。</p>
+          <div id="model-embedding-fields" class="model-embedding-fields">
+            <label class="model-field">Embedding 模型<select id="model-embedding-model"><option value="">不使用 Embedding</option></select></label>
+            <label id="model-embedding-custom-field" class="model-field hidden">手动输入 Embedding 模型 ID<input id="model-embedding-custom" maxlength="255" placeholder="例如：text-embedding-v4"></label>
+            <label id="model-embedding-dimension-field" class="model-field">向量维度<input id="model-embedding-dimension" type="number" min="1" max="100000" placeholder="例如：2048"><small class="field-hint">模型目录不提供维度；保存后可用「测试连接」核对实际维度。</small></label>
+          </div>
+          <label class="checkbox-label model-default-choice"><input id="model-set-default" type="checkbox"> 保存后设为默认模型</label>
+        </section>
+      </div>
+      <footer class="model-dialog-footer"><span>模型列表来自供应商实时接口；实际调用权限以连接测试为准。</span><div class="dialog-actions"><button value="cancel" class="ghost-button" formnovalidate>取消</button><button value="default" class="primary-button" id="save-model-button">保存配置</button></div></footer>
+    </form>
+  </dialog>
+  <div id="toast" class="toast" role="status"></div>
+  <script src="/static/auth.js"></script>
+  <script src="/static/app.js?v=20261022-model-catalog"></script>
+  <script src="/static/retrieval.js"></script>
+  <script src="/static/business.js"></script>
+  <script src="/static/tool-lab.js"></script>
+  <script src="/static/chat.js"></script>
 </body>
 </html>

@@ -1,6 +1,50 @@
-# RAG Demo
+# 澄印打印机售后业务底座（含 RAG Demo）
 
-这是一个用于学习知识库解析、版本切换、异步 Task 和 Chunk 检索的 Demo。当前链路已经从 PostgreSQL/pgvector 切换为：
+这是一个可运行的打印机售后业务底座：FastAPI + MySQL 提供用户、订单、设备、工单、开放资料和真实工具，原生 HTML/JavaScript 提供客户与管理员页面；底层保留原有的 RAG 知识库、离线建库、检索实验和模型配置能力。
+
+全部账号、订单、设备、工单和品牌参数均为**合成练习数据**。本轮没有实现完整 Agent 对话循环、任务持久化或恢复，聊天页仍是界面壳子。
+
+- 启动、账号、迁移、资料导入和操作说明：[docs/after-sales-business-guide.md](docs/after-sales-business-guide.md)
+- 实际测试结果与未验证项：[docs/after-sales-business-verification.md](docs/after-sales-business-verification.md)
+- 业务设计与计划：[docs/superpowers/specs/2026-10-26-users-orders-design.md](docs/superpowers/specs/2026-10-26-users-orders-design.md)、[docs/superpowers/plans/2026-10-26-after-sales-business-foundation.md](docs/superpowers/plans/2026-10-26-after-sales-business-foundation.md)
+
+## 售后业务快速启动
+
+```powershell
+python -m pip install -e ".[dev]"
+docker compose up -d
+
+# 首次或迁移后：检查/应用十张业务表（不会自动建表）
+python -X utf8 -m app.cli.business_schema check
+python -X utf8 -m app.cli.business_schema apply --yes
+
+# 创建管理员并导入合成数据（密码交互输入，不写入仓库）
+python -X utf8 -m app.cli.create_admin admin
+python -X utf8 -m app.cli.seed_business --dry-run --as-of 2026-10-26
+python -X utf8 -m app.cli.seed_business --apply --yes --create-users
+
+# 开放售后资料；建库是异步的，发布后再执行一次以建立映射
+python -X utf8 -m app.cli.import_support_knowledge --apply --yes
+python -X utf8 -m app.cli.import_support_knowledge --status
+
+# 启动
+python -X utf8 -m uvicorn app.main:app --host 127.0.0.1 --port 8001
+```
+
+打开 <http://127.0.0.1:8001/>。客户只能读取自己的订单、设备和工单；管理员可录入订单、登记设备、处理工单、维护资料开放清单。8 个工具可在“工具调试”页实际执行，创建工单会先预留操作键并写入数据库。
+
+验证命令：
+
+```powershell
+python -m pytest -q -p no:cacheprovider
+python -m ruff check app tests tools --no-cache
+python -X utf8 tools/verify_after_sales_api.py        # 需运行中的 API 与账号密码环境变量
+python -X utf8 tools/verify_after_sales_browser.py    # 需本机 Edge，输出截图
+```
+
+下面的内容是原有 RAG Demo 的详细说明，仍然有效。
+
+## RAG Demo
 
 ```text
 MySQL：知识库、Document、Generation/ParseRun、Task 与 Outbox
@@ -105,9 +149,26 @@ python -m app.rag.maintenance
 
 ## 旧数据升级
 
-已有 MySQL/共享 Chunk 索引必须先审阅 [迁移说明](docs/a1-migration.md)，不能把 `create_all` 当作字段迁移。启动会检查旧结构并报错，不自动 ALTER 或转换现有索引。迁移脚本本次**仅编写，未执行**；原始 ES 索引保留，配置切换需要单独操作。
+已有 MySQL/共享 Chunk 索引必须先审阅 [迁移说明](docs/a1-migration.md)，不能把 `create_all` 当作字段迁移。启动会检查旧结构并报错，不自动 ALTER 或转换现有索引。本机已于 2026-10-22 完成 A1 表与 Chunk 转换；新环境仍需按文档单独审核和执行。
 
 ## API 概览
+
+售后业务（全部以 `/api/v1` 开头；未登录 401，越权/不存在 404，管理员接口 403）：
+
+```text
+POST /auth/register  POST /auth/login  POST /auth/logout  GET /auth/me
+GET  /orders  GET /orders/{id}  POST /orders  PATCH /orders/{id}
+GET  /devices GET /devices/{id} POST /devices
+GET  /tickets GET /tickets/{id} POST /tickets  POST /tickets/{id}/events
+POST /operations      GET /operations/{id}
+POST /support/knowledge/search
+GET/POST /admin/support-documents   PATCH /admin/support-documents/{id}
+GET  /admin/customers
+GET  /tool-lab/tools  POST /tool-lab/execute
+GET  /admin/system/status
+```
+
+知识库与检索实验（管理员 + CSRF；检索实验仍限本机直连）：
 
 ```text
 POST /api/v1/knowledge-bases
@@ -126,22 +187,21 @@ POST /api/v1/model-providers/{provider}/test
 
 ## 模型配置
 
-打开页面顶部的“模型配置”，可以查看智谱和 GPT-compatible 提供商的配置状态、Chat/Embedding 模型、向量维度和连接测试结果。完整 API Key 只从服务端 `.env` 读取，前端只接收掩码；GPT 没有配置 Key 时会显示未配置，不会发起外部请求。
+打开页面顶部的“模型配置”，可以查看已保存的提供商标记、Chat/Embedding 模型、向量维度和连接测试结果。完整 API Key 只保存在服务端，前端只接收掩码。
 
-当前解析链路使用智谱 `embedding-3`，Embedding 维度为 2048，与 Elasticsearch `rag_demo_chunks_v1` 的 Mapping 一致。GPT 的 `text-embedding-3-small` 默认返回 1536 维，当前仅作为配置展示和后续接入入口，不能直接写入现有 2048 维 Chunk 索引。
+当前本机 `.env` 使用百炼兼容地址、`qwen-plus` 与 `text-embedding-v4`（2048 维），对应索引 `rag_demo_chunks_qwen_v1`；以实际 `.env` 为准。切换向量模型不能只改配置，需要重建知识库或按迁移说明整体迁移。
 
 ## 测试
 
 离线测试不依赖 Docker、MinerU 或外部模型服务：
 
 ```powershell
-python -m pytest -q
+python -m pytest -q -p no:cacheprovider
 ```
 
-测试覆盖配置、数据模型、稳定 Chunk ID、ES Mapping、RabbitMQ 消息契约、Task 幂等判断、MinerU 标准化结果、Token 切块和前端契约。
+当前共 310 项通过（含 6 项仅在提供隔离 MySQL 测试库时运行的真实集成测试；不提供隔离库时为 304 passed / 6 skipped）。另有 HTTP 与 Edge 浏览器验收脚本，说明见 [售后业务验证](docs/after-sales-business-verification.md)。
 
 ## 设计文档
 
-本次对照结论、实现映射和验收证据见：
-
-[docs/a1-alignment.md](docs/a1-alignment.md)
+- 售后业务底座计划与设计：[plan](docs/superpowers/plans/2026-10-26-after-sales-business-foundation.md)、[spec](docs/superpowers/specs/2026-10-26-users-orders-design.md)
+- A1 对照结论与实现映射：[docs/a1-alignment.md](docs/a1-alignment.md)

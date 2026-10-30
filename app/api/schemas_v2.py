@@ -1,12 +1,26 @@
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class KnowledgeBaseCreate(BaseModel):
     name: str = Field(min_length=1, max_length=200)
     description: str | None = Field(default=None, max_length=1000)
+
+
+class KnowledgeBaseUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(min_length=1, max_length=200)
+
+    @field_validator("name")
+    @classmethod
+    def nonblank_name(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("知识库名称不能为空")
+        return value
 
 
 class KnowledgeBaseResponse(BaseModel):
@@ -17,6 +31,21 @@ class KnowledgeBaseResponse(BaseModel):
     document_count: int
     created_at: datetime | None
     updated_at: datetime | None
+
+
+class KnowledgeBaseBatchDelete(BaseModel):
+    ids: list[str] = Field(min_length=1, max_length=100)
+    confirm_with_documents: bool = False
+
+
+class KnowledgeBaseDeleteSkipped(BaseModel):
+    id: str
+    reason: str
+
+
+class KnowledgeBaseBatchDeleteResponse(BaseModel):
+    accepted: list[str]
+    skipped: list[KnowledgeBaseDeleteSkipped]
 
 
 class TaskRangeResponse(BaseModel):
@@ -56,6 +85,7 @@ class DocumentResponse(BaseModel):
     file_size: int
     mime_type: str
     status: str
+    support_open: bool = False
     current_generation_id: str | None
     building_generation_id: str | None
     current_run_id: str | None = None
@@ -124,6 +154,24 @@ class ModelProviderCatalogResponse(BaseModel):
     embedding_models: list[str]
     embedding_dimensions: dict[str, int] = Field(default_factory=dict)
     capabilities: list[str]
+
+
+class ModelDiscoveryRequest(BaseModel):
+    provider_key: str = Field(min_length=1, max_length=64)
+    base_url: str = Field(min_length=1, max_length=512)
+    api_key: str | None = Field(default=None, max_length=2048)
+    configuration_id: str | None = None
+
+
+class DiscoveredModelResponse(BaseModel):
+    id: str
+    name: str
+    description: str | None = None
+
+
+class ModelDiscoveryResponse(BaseModel):
+    chat_models: list[DiscoveredModelResponse]
+    embedding_models: list[DiscoveredModelResponse]
 
 
 class ModelConfigurationCreate(BaseModel):

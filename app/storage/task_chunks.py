@@ -102,6 +102,20 @@ class TaskChunkOperations:
         ):
             raise RuntimeError("ES 清理未完整完成，应在下次扫描重试")
 
+    async def delete_knowledge_base_chunks(self, *, kb_id):
+        response = await self.client.delete_by_query(
+            index=self.index,
+            query={"term": {"kb_id": kb_id}},
+            refresh=True,
+            conflicts="proceed",
+        )
+        if (
+            response.get("failures")
+            or response.get("timed_out")
+            or response.get("version_conflicts")
+        ):
+            raise RuntimeError("ES 清理未完整完成，应重试删除知识库")
+
     async def search(
         self,
         query_vector: list[float],
@@ -109,6 +123,7 @@ class TaskChunkOperations:
         run_ids: list[str] | None = None,
         kb_id: str | None = None,
         document_id: str | None = None,
+        document_ids: list[str] | None = None,
         limit: int = 5,
         generation_id: str | None = None,
     ) -> list[dict[str, Any]]:
@@ -121,6 +136,8 @@ class TaskChunkOperations:
             filters.append({"term": {"kb_id": kb_id}})
         if document_id:
             filters.append({"term": {"doc_id": document_id}})
+        if document_ids:
+            filters.append({"terms": {"doc_id": list(document_ids)}})
         response = await self.client.search(
             index=self.index,
             knn={

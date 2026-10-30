@@ -73,3 +73,10 @@ class MinioStorage:
 
     async def delete_object(self, bucket: str, object_key: str) -> None:
         await asyncio.to_thread(self.client.remove_object, bucket, object_key)
+
+    async def delete_prefix(self, bucket: str, prefix: str) -> None:
+        def remove_all() -> None:
+            for item in self.client.list_objects(bucket, prefix=prefix, recursive=True):
+                self.client.remove_object(bucket, item.object_name)
+
+        await asyncio.to_thread(remove_all)

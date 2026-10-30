@@ -1,6 +1,6 @@
-# A1 升级说明（尚未对现有服务执行）
+# A1 升级说明（本机已于 2026-10-22 执行）
 
-用户仅授权编写模型/迁移文件，本次没有连接现有 MySQL 或 ES 执行迁移，没有修改 `.env`、Docker、CI，没有删除文件。
+本文件先前描述的是迁移前计划。用户授权后，已按下文执行本机数据升级；具体备份、校验和保留项见文末执行记录。未执行文档外的远程操作。
 
 ## 新建隔离环境
 
@@ -18,13 +18,13 @@
    python -m tools.migrate_a1_artifacts
    ```
 
-6. 审核通过后，才在已停止业务的隔离副本上尝试转换，例如：
+6. 审核通过后，在已停止业务的隔离副本上尝试转换，例如：
 
    ```powershell
    python -m tools.migrate_a1_artifacts --apply --target-index rag_demo_chunks_a1_v2
    ```
 
-   这是有外部写入的命令，**本次没有运行**。源索引从现有配置读取，目标必须另行指定且不同于源。转换按每个成功 Task 的完整旧引用读取源文本/向量，创建新的稳定 ID 与独立归属。数量、维度或来源不完整时终止；不删除源索引或源产物。失败可在排查后重试稳定覆盖目标，但成功完成后的重复执行会被可用性预检拒绝，避免对在线系统误操作。
+   这是有外部写入的命令。2026-10-22 已在隔离副本演练并在正式库执行。源索引从现有配置读取，目标必须另行指定且不同于源。转换按每个成功 Task 的完整旧引用读取源文本/向量，创建新的稳定 ID 与独立归属。数量、维度或来源不完整时终止；不删除源索引或源产物。失败可在排查后重试稳定覆盖目标，但成功完成后的重复执行会被可用性预检拒绝，避免对在线系统误操作。
 
 7. 转换刷新后从目标索引按批次读回核对任务数量，最后一个 DB 事务才标可用并固定各 KB 的有效 embedding 配置。目标索引仍使用单一向量维度；不兼容的非生效历史批次不转换、不标可用，生效批次不兼容或同 KB 混模型则直接终止。不能用此脚本充当在线模型迁移工具。
 8. 人工核对 active_run_id 指针、Task 数量、源/目标 ID、向量维度和检索结果，再单独审批修改实际环境中的 `ELASTICSEARCH_INDEX` 指向新索引并启动新程序。本次没有自动修改配置。失败时保留旧服务备份，恢复流程须恢复旧 DB 与旧程序配套使用，不能用旧程序直接运行已改状态语义的新库。
@@ -38,4 +38,22 @@
 
 ## 本次验证范围
 
-隔离 SQLite 验证事务结果，模拟适配器验证故障路径；没有实测 MySQL InnoDB 行锁、RabbitMQ broker 崩溃恢复、ES 集群刷新或真实 OCR/embedding 稳定性。SQL 和批量转换脚本均未在真实服务上执行。实际升级前应在隔离副本上补充这些记录。
+迁移 SQL 和 Chunk 转换已在本机 MySQL / ES 副本演练并正式执行，目标索引刷新和按 Run 读回核对通过。仍未实测 MySQL InnoDB 并发锁竞争、RabbitMQ broker 崩溃恢复或真实 OCR/embedding 稳定性。
+
+## 本机执行记录（2026-10-22）
+
+- 执行前备份目录：`C:\javapractice\backups\rag-demo-a1-20261022-082454`。包含 MySQL gzip 转储及校验值、ES mapping/settings 和 123 条源记录、MinIO 两个 bucket 的 17 个对象、迁移前 `.env` 副本。转储和对象大小均已验证。
+- 在独立克隆库 `rag_demo_a1_stage_20261022` 上执行 SQL，A1 schema 校验通过；另将 196 条 Task Chunk 产物转换到 `rag_demo_chunks_a1_stage_20261022` 并验证 mapping。演练完成后已删除克隆库并撤销其授权，也已删除临时索引。
+- 正式执行 `tools/migrations/20261021_a1.sql`。MySQL 保留原 7 个知识库、7 个文档、9 个 Generation、9 个 Task 和 196 条 TaskChunkRef。旧未完成 Task 标记取消、旧 Outbox 标为 DEAD；旧 Generation 的产物标记为待迁移。
+- 正式转换 196 条 Task Chunk 产物到 `rag_demo_chunks_a1_v2`，刷新后按 Run 核对成功。旧索引 `rag_demo_chunks_v1` 仍保留，计 123 条。
+- 7 个文档中有 5 个当前 active_run 为 SUCCESS 且产物可用；另 2 个没有可检索的已发布批次，因此在线实验会排除它们。
+- `.env` 中只把 `ELASTICSEARCH_INDEX` 从 `rag_demo_chunks_v1` 改为 `rag_demo_chunks_a1_v2`。恢复旧程序时应同时恢复 MySQL 备份与 `.env.pre-migration`；不要只切回旧索引而继续用新数据状态。
+- 当前部署的真实模型调用、在线检索质量和 A2 MinIO 快照写入尚未由用户执行验证。Docker 服务与应用本机接口已确认启动成功。
+
+## 后续千问向量迁移（2026-10-22）
+
+- 用户授权后，用提供的百炼 Key 对 `qwen-plus` 与 `text-embedding-v4` 各发出最小请求，两个模型均返回成功；精确剩余额度无法通过模型接口读取。
+- 将运行时配置改为百炼 OpenAI 兼容地址、`qwen-plus`、`text-embedding-v4`、2048 维；项目批量大小设为 10，以符合 Embedding v4 的单次请求上限。
+- 保留 `rag_demo_chunks_a1_v2`，并复制全部 196 条记录到新索引 `rag_demo_chunks_qwen_v1`。其中 5 个当前有效 Run 的 104 个 Chunk 按原内容重新生成向量；核对目标记录数、Chunk ID、正文和向量维度后，更新 5 个活动 Run 及所属 Knowledge Base 的向量模型元数据。
+- `.env` 当前指向 `rag_demo_chunks_qwen_v1`。源 A1 索引保留，便于回退。两份没有已发布 Run 的文档保持未发布状态。
+- API 健康检查、模型配置展示、知识库列表和实验会话接口已确认正常。尚未用真实用户问题验证召回质量；Rerank 仍未配置。

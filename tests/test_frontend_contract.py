@@ -13,6 +13,17 @@ def test_frontend_contains_knowledge_base_and_document_workflows() -> None:
     assert "/api/v1/documents/" in script
 
 
+def test_knowledge_base_list_supports_batch_delete_and_refetches_after_acceptance() -> None:
+    html = (ROOT / "app" / "web" / "index.html").read_text(encoding="utf-8")
+    script = (ROOT / "app" / "web" / "app.js").read_text(encoding="utf-8")
+
+    assert 'id="delete-selected-kbs"' in html
+    assert "data-select-all-kbs" in script
+    assert "data-select-kb" in script
+    assert "/api/v1/knowledge-bases/batch-delete" in script
+    assert "await loadKnowledgeBases()" in script
+
+
 def test_document_table_owns_parse_progress_and_delete_actions() -> None:
     html = (ROOT / "app" / "web" / "index.html").read_text(encoding="utf-8")
     script = (ROOT / "app" / "web" / "app.js").read_text(encoding="utf-8")
@@ -34,11 +45,14 @@ def test_document_table_owns_parse_progress_and_delete_actions() -> None:
     assert "document-actions" not in detail
 
 
-def test_frontend_contains_chat_shell_notice() -> None:
+def test_frontend_connects_chat_ui_for_logged_in_customers() -> None:
     html = (ROOT / "app" / "web" / "index.html").read_text(encoding="utf-8")
 
     assert "聊天" in html
-    assert "尚未接入" in html
+    assert '<script src="/static/chat.js"></script>' in html
+    assert 'id="chat-conversations"' in html
+    assert 'id="chat-messages"' in html
+    assert 'data-view="chat" data-admin-only' not in html
 
 
 def test_frontend_contains_model_provider_settings() -> None:
@@ -59,3 +73,7 @@ def test_frontend_model_settings_are_persistent_and_switchable() -> None:
     assert "/api/v1/model-providers/catalog" in script
     assert "/api/v1/model-providers/configurations" in script
     assert "api_key_masked" in script
+    assert "/api/v1/model-providers/discover-models" in script
+    assert 'class="model-dialog-body"' in html
+    assert 'id="model-refresh-models"' in html
+    assert 'id="model-discovery-status"' in html

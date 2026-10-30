@@ -7,40 +7,44 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.schemas_v2 import (
+    DiscoveredModelResponse,
     ModelConfigurationCreate,
     ModelConfigurationResponse,
     ModelConfigurationTestResponse,
     ModelConfigurationUpdate,
+    ModelDiscoveryRequest,
+    ModelDiscoveryResponse,
     ModelProviderCatalogResponse,
     ModelProviderResponse,
     ModelProviderTestRequest,
     ModelProviderTestResponse,
 )
+from app.auth.dependencies import require_admin, require_csrf_for_write
 from app.core.config import settings
 from app.db import mysql_repository as repository
 from app.db.mysql_session import get_mysql_session
-from app.rag.embedding import EmbeddingError, ZhipuEmbeddingClient
+from app.rag.embedding import EmbeddingError, OpenAICompatibleEmbeddingClient
+from app.rag.model_discovery import ModelDiscoveryError, discover_qwen_models
+from app.retrieval.rerank import RerankClient, RerankError
 
-router = APIRouter(prefix="/api/v1/model-providers", tags=["model-providers"])
+router = APIRouter(
+    prefix="/api/v1/model-providers",
+    tags=["model-providers"],
+    dependencies=[Depends(require_admin), Depends(require_csrf_for_write)],
+)
 
 
 PROVIDER_CATALOGS: dict[str, ModelProviderCatalogResponse] = {
-    "zhipu": ModelProviderCatalogResponse(
-        provider_key="zhipu",
-        display_name="智谱 GLM",
-        base_url="https://open.bigmodel.cn/api/paas/v4",
-        chat_models=["glm-5.1", "glm-5.2", "glm-5-turbo"],
-        embedding_models=["embedding-3"],
-        embedding_dimensions={"embedding-3": 2048},
-        capabilities=["Chat", "Embedding"],
+    "rerank": ModelProviderCatalogResponse(
+        provider_key="rerank", display_name="Rerank（/rerank 协议）", base_url="",
+        chat_models=[], embedding_models=[], capabilities=["Rerank"],
     ),
-    "openai": ModelProviderCatalogResponse(
-        provider_key="openai",
-        display_name="OpenAI GPT",
-        base_url="https://api.openai.com/v1",
-        chat_models=["gpt-4o-mini", "gpt-4.1-mini"],
-        embedding_models=["text-embedding-3-small", "text-embedding-3-large"],
-        embedding_dimensions={"text-embedding-3-small": 1536, "text-embedding-3-large": 3072},
+    "qwen": ModelProviderCatalogResponse(
+        provider_key="qwen",
+        display_name="通义千问（百炼）",
+        base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
+        chat_models=[],
+        embedding_models=[],
         capabilities=["Chat", "Embedding"],
     ),
     "custom": ModelProviderCatalogResponse(
@@ -73,6 +77,8 @@ def _configuration_capabilities(
     provider_key: str, embedding_model: str | None
 ) -> list[str]:
     catalog = PROVIDER_CATALOGS.get(provider_key)
+    if provider_key == "rerank":
+        return ["Rerank"]
     capabilities = list(catalog.capabilities if catalog else ["Chat"])
     if embedding_model and "Embedding" not in capabilities:
         capabilities.append("Embedding")
@@ -99,9 +105,51 @@ def _serialize_configuration(item) -> ModelConfigurationResponse:
 
 @router.get("/catalog", response_model=list[ModelProviderCatalogResponse])
 async def list_provider_catalog() -> list[ModelProviderCatalogResponse]:
-    """Return provider/model choices for the configuration UI."""
+    """Return provider metadata; Qwen model choices come from live discovery."""
 
     return list(PROVIDER_CATALOGS.values())
+
+
+@router.post("/discover-models", response_model=ModelDiscoveryResponse)
+async def discover_models(
+    payload: ModelDiscoveryRequest,
+    session: AsyncSession = Depends(get_mysql_session),
+) -> ModelDiscoveryResponse:
+    if payload.provider_key != "qwen":
+        raise HTTPException(status_code=422, detail="当前只支持实时获取千问模型目录")
+    base_url = payload.base_url.strip().rstrip("/")
+    api_key = (payload.api_key or "").strip()
+    if not api_key and payload.configuration_id:
+        saved = await repository.get_model_configuration(session, payload.configuration_id)
+        if saved is None or saved.provider_key != "qwen":
+            raise HTTPException(status_code=404, detail="千问模型配置不存在")
+        if base_url != saved.base_url.rstrip("/"):
+            raise HTTPException(status_code=422, detail="Base URL 已改变，请填写对应的 API Key 后重新获取")
+        api_key = saved.api_key
+    if (
+        not api_key
+        and not payload.configuration_id
+        and base_url == (settings.llm_base_url or "").rstrip("/")
+    ):
+        api_key = settings.llm_api_key or ""
+    if not api_key:
+        raise HTTPException(status_code=422, detail="请先填写千问 API Key")
+    try:
+        discovered = await discover_qwen_models(base_url, api_key)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except ModelDiscoveryError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+    return ModelDiscoveryResponse(
+        chat_models=[
+            DiscoveredModelResponse(id=item.id, name=item.name, description=item.description)
+            for item in discovered.chat_models
+        ],
+        embedding_models=[
+            DiscoveredModelResponse(id=item.id, name=item.name, description=item.description)
+            for item in discovered.embedding_models
+        ],
+    )
 
 
 @router.get("/configurations", response_model=list[ModelConfigurationResponse])
@@ -218,14 +266,29 @@ async def test_saved_model_configuration(
     if item is None:
         raise HTTPException(status_code=404, detail="模型配置不存在")
     started = time.perf_counter()
+    if item.provider_key == "rerank":
+        try:
+            await RerankClient(item.base_url, item.api_key, item.chat_model).score(
+                request.text, [{"title": "连接测试", "content": request.text}])
+            success, message = True, "Rerank 接口连接成功（分数格式 [0,1]）。"
+        except RerankError as exc:
+            success, message = False, str(exc)
+        return ModelConfigurationTestResponse(
+            configuration_id=item.id, provider=item.provider_key, success=success,
+            message=message, model=item.chat_model,
+            latency_ms=round((time.perf_counter() - started) * 1000),
+        )
     try:
         async with httpx.AsyncClient(base_url=item.base_url.rstrip("/"), timeout=settings.model_timeout_seconds) as client:
             vector_dimension = None
             if item.embedding_model:
+                embedding_payload = {"model": item.embedding_model, "input": [request.text]}
+                if item.embedding_model == "text-embedding-v4" and item.embedding_dimension:
+                    embedding_payload["dimensions"] = item.embedding_dimension
                 response = await client.post(
                     "/embeddings",
                     headers={"Authorization": f"Bearer {item.api_key}"},
-                    json={"model": item.embedding_model, "input": [request.text]},
+                    json=embedding_payload,
                 )
                 response.raise_for_status()
                 data = response.json().get("data")
@@ -269,10 +332,10 @@ async def test_saved_model_configuration(
 
 
 def _provider(provider: str) -> ModelProviderResponse:
-    if provider == "zhipu":
+    if provider == "qwen":
         return ModelProviderResponse(
-            provider="zhipu",
-            display_name="智谱 GLM",
+            provider="qwen",
+            display_name="通义千问（百炼）",
             configured=bool(settings.llm_api_key and settings.llm_base_url),
             base_url=settings.llm_base_url or "",
             api_key_masked=_mask_key(settings.llm_api_key),
@@ -284,25 +347,12 @@ def _provider(provider: str) -> ModelProviderResponse:
                 settings.llm_api_key and settings.embedding_model and settings.embedding_dimension == 2048
             ),
         )
-    if provider == "gpt":
-        return ModelProviderResponse(
-            provider="gpt",
-            display_name="OpenAI GPT",
-            configured=bool(settings.gpt_api_key and settings.gpt_base_url),
-            base_url=settings.gpt_base_url,
-            api_key_masked=_mask_key(settings.gpt_api_key),
-            chat_model=settings.gpt_model,
-            embedding_model=settings.gpt_embedding_model,
-            embedding_dimension=settings.gpt_embedding_dimension,
-            capabilities=["Chat", "Embedding-compatible"],
-            current_pipeline_compatible=False,
-        )
     raise HTTPException(status_code=404, detail="不支持的模型提供商")
 
 
 @router.get("", response_model=list[ModelProviderResponse])
 async def list_model_providers() -> list[ModelProviderResponse]:
-    return [_provider("zhipu"), _provider("gpt")]
+    return [_provider("qwen")]
 
 
 @router.get("/{provider}", response_model=ModelProviderResponse)
@@ -325,8 +375,8 @@ async def test_model_provider(
 
     started = time.perf_counter()
     try:
-        if provider == "zhipu":
-            vectors = await ZhipuEmbeddingClient().embed_texts([request.text])
+        if provider == "qwen":
+            vectors = await OpenAICompatibleEmbeddingClient().embed_texts([request.text])
             dimension = len(vectors[0]) if vectors else None
             async with httpx.AsyncClient(
                 base_url=settings.llm_base_url.rstrip("/"), timeout=settings.model_timeout_seconds
@@ -356,29 +406,7 @@ async def test_model_provider(
                 latency_ms=round((time.perf_counter() - started) * 1000),
             )
 
-        async with httpx.AsyncClient(
-            base_url=settings.gpt_base_url.rstrip("/"), timeout=settings.model_timeout_seconds
-        ) as client:
-            response = await client.post(
-                "/embeddings",
-                headers={"Authorization": f"Bearer {settings.gpt_api_key}"},
-                json={"model": settings.gpt_embedding_model, "input": [request.text]},
-            )
-            response.raise_for_status()
-            payload = response.json()
-            data = payload.get("data")
-            vector = data[0].get("embedding") if isinstance(data, list) and data else None
-            if not isinstance(vector, list):
-                raise TypeError("Embedding 返回格式不正确")
-            return ModelProviderTestResponse(
-                provider=provider,
-                success=True,
-                message="Embedding 接口连接成功。",
-                model=settings.gpt_embedding_model,
-                vector_dimension=len(vector),
-                chat_success=None,
-                latency_ms=round((time.perf_counter() - started) * 1000),
-            )
+        raise HTTPException(status_code=404, detail="不支持的模型提供商")
     except (EmbeddingError, httpx.HTTPError, TypeError, ValueError) as exc:
         return ModelProviderTestResponse(
             provider=provider,

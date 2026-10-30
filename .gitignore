@@ -10,3 +10,13 @@ __pycache__/
 dist/
 build/
 *.egg-info/
+
+# pip / pytest 残留临时目录（曾被 git status 报 Permission denied）
+pip-*/
+pytest-of-*/
+
+# 本地数据缓存，不入版本库
+data-gym-cache/
+
+# pytest JUnit 报告：按需生成，不入版本库
+docs/a1-test-results.xml

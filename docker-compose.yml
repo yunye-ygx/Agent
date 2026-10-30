@@ -74,8 +74,27 @@ services:
       timeout: 5s
       retries: 20
 
+  checkpoint-postgres:
+    image: postgres:17-alpine
+    container_name: rag-demo-checkpoint-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: checkpoint_db
+      POSTGRES_USER: checkpoint_user
+      POSTGRES_PASSWORD: checkpoint_password
+    ports:
+      - "15432:5432"
+    volumes:
+      - rag_demo_checkpoint_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U checkpoint_user -d checkpoint_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
 volumes:
   rag_demo_mysql_data:
   rag_demo_elasticsearch_data:
   rag_demo_minio_data:
   rag_demo_rabbitmq_data:
+  rag_demo_checkpoint_postgres_data:

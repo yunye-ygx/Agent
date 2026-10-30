@@ -11,7 +11,7 @@ from app.db import mysql_repository as repository
 from app.db.mysql_models import TaskKind, TaskStatus
 from app.db.mysql_session import AsyncSessionFactory
 from app.rag.document_parser import RemoteMinerUParser, file_type_for, parse_task_document
-from app.rag.embedding import ZhipuEmbeddingClient
+from app.rag.embedding import OpenAICompatibleEmbeddingClient
 from app.rag.fingerprint import build_parse_fingerprint, build_task_chunk_id
 from app.rag.mineru_parser import MinerUParser
 from app.rag.structured_chunker import StructuredChunker
@@ -192,7 +192,7 @@ class TaskProcessor:
         )
         await check()
         embedding = snapshot.get("embedding", {})
-        client = self.embedding_client or ZhipuEmbeddingClient(
+        client = self.embedding_client or OpenAICompatibleEmbeddingClient(
             settings.model_copy(
                 update={
                     "embedding_model": embedding["model"],
