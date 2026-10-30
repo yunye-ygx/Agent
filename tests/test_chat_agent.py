@@ -3,6 +3,7 @@ import json
 import pytest
 from langchain_core.language_models.fake_chat_models import FakeMessagesListChatModel
 from langchain_core.messages import AIMessage, HumanMessage
+from langgraph.checkpoint.memory import InMemorySaver
 from pydantic import Field
 
 from app.business.principal import Principal
@@ -76,3 +77,26 @@ def test_database_history_restores_protocol_messages():
     ]
     messages = restore_messages(rows)
     assert messages[0].tool_calls[0]["id"] == messages[1].tool_call_id
+
+
+@pytest.mark.asyncio
+async def test_agent_uses_run_id_as_checkpoint_thread():
+    from app.chat.agent import build_agent, stream_agent
+
+    principal = Principal.for_user(
+        user_id="alice", username="alice", display_name="Alice", role="customer"
+    )
+    saver = InMemorySaver()
+    model = ToolModel(responses=[AIMessage(content="已完成")])
+    agent = build_agent(model, principal, specs=[], checkpointer=saver)
+
+    events = [
+        event
+        async for event in stream_agent(
+            agent, [HumanMessage(content="你好")], thread_id="run-checkpoint-1"
+        )
+    ]
+
+    assert any(kind == "message" for kind, _data in events)
+    checkpoint = saver.get_tuple({"configurable": {"thread_id": "run-checkpoint-1"}})
+    assert checkpoint is not None

@@ -204,5 +204,4 @@ python -m pytest -q -p no:cacheprovider
 ## 设计文档
 
 - 售后业务底座计划与设计：[plan](docs/superpowers/plans/2026-10-26-after-sales-business-foundation.md)、[spec](docs/superpowers/specs/2026-10-26-users-orders-design.md)
-- 工具执行器与真实工具：[docs/tool-runtime.md](docs/tool-runtime.md)
 - A1 对照结论与实现映射：[docs/a1-alignment.md](docs/a1-alignment.md)

@@ -104,4 +104,4 @@ SQLAlchemy CreateTable.compile(MySQL dialect)
 7 张表 DDL 离线编译成功（不是执行 SQL 迁移）
 ```
 
-完整机器可读测试结果：[a1-test-results.xml](a1-test-results.xml)。迁移文件及后续隔离演练步骤：[a1-migration.md](a1-migration.md)。本次没有生产库、真实服务端到端或真实并发锁测试证据，没有执行 MySQL/ES 迁移；不将这些尚待完成的验证标记为已通过。
+迁移文件及后续隔离演练步骤：[a1-migration.md](a1-migration.md)。本次没有生产库、真实服务端到端或真实并发锁测试证据，没有执行 MySQL/ES 迁移；不将这些尚待完成的验证标记为已通过。

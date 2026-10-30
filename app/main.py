@@ -25,6 +25,9 @@ from app.api.routes.system import router as system_router
 from app.api.routes.tickets import router as tickets_router
 from app.api.routes.tool_lab import router as tool_lab_router
 from app.bootstrap import initialize_infrastructure
+from app.chat.outbox_publisher import run_chat_outbox
+from app.chat.recovery import run_chat_recovery
+from app.chat.worker import run_chat_worker
 from app.core.config import settings
 from app.db.mysql_session import AsyncSessionFactory
 from app.messaging.outbox_publisher import run_publisher
@@ -66,6 +69,26 @@ async def lifespan(application: FastAPI):
             application.state.background_services = tuple(background_tasks)
             logger.info(
                 "Local background services started: %s", ", ".join(name for name, _ in services)
+            )
+        chat_ready = bool((dependency_status or {}).get("chat", {}).get("ready"))
+        if (
+            settings.run_background_services
+            and settings.chat_run_background_services
+            and chat_ready
+        ):
+            chat_services = (
+                ("chat-outbox", run_chat_outbox),
+                ("chat-worker", run_chat_worker),
+                ("chat-recovery", run_chat_recovery),
+            )
+            for name, service in chat_services:
+                task = asyncio.create_task(service(), name=name)
+                task.add_done_callback(_report_background_task)
+                background_tasks.add(task)
+            application.state.background_services = tuple(background_tasks)
+            logger.info(
+                "Local chat background services started: %s",
+                ", ".join(name for name, _ in chat_services),
             )
     try:
         yield
@@ -138,10 +161,12 @@ async def readiness(request: Request):
     database_ready = await check_database()
     dependency_status = getattr(request.app.state, "dependency_status", {}) or {}
     rag = dependency_status.get("rag") or {"ready": False, "message": "知识检索尚未初始化"}
+    chat = dependency_status.get("chat") or {"ready": False, "message": "聊天执行依赖尚未初始化"}
     ready = bool(database_ready)
     payload = {
         "status": "ready" if ready else "not_ready",
         "business": {"ready": database_ready},
         "rag": rag,
+        "chat": chat,
     }
     return JSONResponse(status_code=200 if ready else 503, content=payload)

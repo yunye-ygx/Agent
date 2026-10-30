@@ -17,6 +17,11 @@
 #chat-view .chat-heading { gap: 12px; }
 #chat-view h1 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 44vw; }
 #chat-input { min-width: 0; }
+#chat-view .chat-input { flex-wrap: wrap; }
+#chat-view .chat-input button { white-space: nowrap; }
+.chat-message.streaming { border-left: 3px solid #7aa7e8; }
+.chat-message.streaming::after { content: "▍"; animation: chat-cursor 1s steps(2, start) infinite; }
+@keyframes chat-cursor { 50% { opacity: 0; } }
 #chat-view button:disabled { opacity: .55; cursor: wait; }
 @media (max-width: 760px) {
   #chat-view .chat-layout { display: flex; flex-direction: column; height: auto; min-height: 0; }

@@ -33,7 +33,14 @@ def model_from_configuration(config):
     )
 
 
-def build_agent(model, principal, *, specs=TOOL_SPECS):
+def build_agent(
+    model,
+    principal,
+    *,
+    specs=TOOL_SPECS,
+    checkpointer=None,
+    tool_recorder=None,
+):
     allowed = [s for s in specs if s.effect == "read" and s.permission in principal.permissions]
     runtime = ToolRuntime(allowed)
     context = ExecutionContext(user_id=principal.user_id, permissions=principal.permissions)
@@ -54,32 +61,70 @@ def build_agent(model, principal, *, specs=TOOL_SPECS):
     @wrap_tool_call
     async def runtime_boundary(request, handler):
         call = request.tool_call
-        observation = await runtime.execute(
-            ToolCall(call_id=call["id"], name=call["name"], arguments=call["args"]), context
-        )
+        observation = None
+        if tool_recorder is not None:
+            observation = await tool_recorder.before(call, context)
+        if observation is None:
+            observation = await runtime.execute(
+                ToolCall(call_id=call["id"], name=call["name"], arguments=call["args"]),
+                context,
+            )
+            if tool_recorder is not None:
+                await tool_recorder.after(call, context, observation)
         return ToolMessage(
-            content=observation.model_dump_json(),
+            content=(
+                observation.model_dump_json()
+                if hasattr(observation, "model_dump_json")
+                else __import__("json").dumps(observation, ensure_ascii=False)
+            ),
             tool_call_id=call["id"],
             name=call["name"],
             status="success" if observation.status == "success" else "error",
         )
 
     return create_agent(
-        model=model, tools=descriptors, middleware=[runtime_boundary], system_prompt=SYSTEM_PROMPT
+        model=model,
+        tools=descriptors,
+        middleware=[runtime_boundary],
+        system_prompt=SYSTEM_PROMPT,
+        checkpointer=checkpointer,
     )
 
 
 def restore_messages(rows):
+    """Rebuild protocol messages and keep tool results in the model's call order."""
+
     messages = []
-    for row in rows:
-        if row.role == "user":
-            messages.append(HumanMessage(content=row.content))
-        elif row.role == "assistant":
-            messages.append(AIMessage(content=row.content, tool_calls=row.tool_calls or []))
-        elif row.role == "tool":
+    tool_buffer = []
+    call_order: dict[str, int] = {}
+
+    def flush_tools() -> None:
+        if not tool_buffer:
+            return
+        ordered = sorted(
+            tool_buffer,
+            key=lambda row: call_order.get(row.tool_call_id, len(call_order) + 1),
+        )
+        for row in ordered:
             messages.append(
                 ToolMessage(content=row.content, tool_call_id=row.tool_call_id, name=row.tool_name)
             )
+        tool_buffer.clear()
+
+    for row in rows:
+        if row.role == "user":
+            flush_tools()
+            messages.append(HumanMessage(content=row.content))
+        elif row.role == "assistant":
+            flush_tools()
+            call_order = {
+                call["id"]: index
+                for index, call in enumerate(row.tool_calls or [])
+            }
+            messages.append(AIMessage(content=row.content, tool_calls=row.tool_calls or []))
+        elif row.role == "tool":
+            tool_buffer.append(row)
+    flush_tools()
     return messages
 
 
@@ -93,19 +138,25 @@ def text_content(content):
     )
 
 
-async def stream_agent(agent, messages):
+async def stream_agent(agent, messages, *, config=None, thread_id=None):
     # Both modes come from the same execution; no second invoke to obtain the final answer.
+    run_config = {"recursion_limit": 24}
+    if thread_id is not None:
+        run_config["configurable"] = {"thread_id": thread_id}
+    if config:
+        run_config.update(config)
     async for mode, payload in agent.astream(
-        {"messages": messages},
-        config={"recursion_limit": 24},
+        {"messages": messages} if messages is not None else None,
+        config=run_config,
         stream_mode=["messages", "updates"],
     ):
         if mode == "messages":
             chunk, metadata = payload
-            if metadata.get("langgraph_node") == "model":
-                delta = text_content(chunk.content)
-                if delta:
-                    yield "delta", {"text": delta}
+            if metadata.get("langgraph_node") != "model":
+                continue
+            delta = text_content(chunk.content)
+            if delta:
+                yield "delta", {"text": delta, "message_id": getattr(chunk, "id", None)}
         else:
             for update in payload.values():
                 if not isinstance(update, dict):
@@ -118,8 +169,12 @@ async def stream_agent(agent, messages):
                             "message",
                             {
                                 "role": "assistant",
+                                "message_id": message.id,
                                 "content": text_content(message.content),
                                 "tool_calls": message.tool_calls or None,
+                                "finish_reason": (message.response_metadata or {}).get(
+                                    "finish_reason"
+                                ),
                             },
                         )
                     elif isinstance(message, ToolMessage):

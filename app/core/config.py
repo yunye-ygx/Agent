@@ -37,6 +37,32 @@ class Settings(BaseSettings):
     rabbitmq_dlx: str = "rag_demo.dlx"
     rabbitmq_dead_queue: str = "rag_demo.task.dead"
 
+    chat_rabbitmq_exchange: str = "rag_demo.chat.runs"
+    chat_rabbitmq_routing_key: str = "chat.run.execute"
+    chat_rabbitmq_queue: str = "rag_demo.chat.run.execute"
+    chat_rabbitmq_dlx: str = "rag_demo.chat.dlx"
+    chat_rabbitmq_dead_queue: str = "rag_demo.chat.dead"
+    chat_outbox_lock_seconds: int = 30
+    chat_outbox_max_attempts: int = 10
+    chat_lease_seconds: int = 60
+    chat_heartbeat_interval_seconds: float = 15.0
+    chat_execution_timeout_seconds: float = 5 * 60
+    chat_queued_timeout_seconds: int = 120
+    chat_recovery_interval_seconds: float = 10.0
+    chat_max_recovery_count: int = 3
+    chat_event_retention_seconds: int = 7 * 24 * 3600
+    chat_event_poll_interval_seconds: float = 0.25
+    chat_event_batch_chars: int = 320
+    chat_event_batch_interval_seconds: float = 0.2
+    chat_worker_prefetch_count: int = 1
+    chat_worker_concurrency: int = 1
+    chat_run_background_services: bool = True
+    chat_require_checkpoint: bool = True
+
+    checkpoint_postgres_url: str = (
+        "postgresql://checkpoint_user:checkpoint_password@localhost:15432/checkpoint_db"
+    )
+
     llm_base_url: str | None = None
     llm_api_key: str | None = None
     llm_model: str | None = None

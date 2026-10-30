@@ -1,4 +1,9 @@
-# 聊天接口流程图（第一版实现）
+# 聊天接口流程图（第一版实现，历史）
+
+> **已废弃的执行路径。** 本文描述 2026-10-27 的“POST 直出 SSE、请求内执行 Agent”
+> 版本，保留用于对照。当前实现是 Turn/Run + Outbox + RabbitMQ Worker +
+> LangGraph checkpoint + 可重放 RunEvent，见
+> [agent-chat-guide.md](agent-chat-guide.md)。
 
 接口：`POST /api/v1/chat/conversations/{conversation_id}/messages`
 

@@ -15,6 +15,7 @@ import aio_pika
 
 from app.core.config import settings
 from app.db.mysql_schema import create_mysql_schema
+from app.messaging.chat_topology import declare_chat_topology
 from app.messaging.topology import declare_topology
 from app.storage.elasticsearch_chunks import ChunkStore
 from app.storage.minio_storage import MinioStorage
@@ -56,6 +57,7 @@ async def initialize_infrastructure() -> dict:
             await connection.close()
 
     await _probe("rabbitmq", components, ensure_rabbit)
+    chat = await _chat_readiness()
     ready = all(components.values())
     if not ready:
         logger.warning(
@@ -69,6 +71,60 @@ async def initialize_infrastructure() -> dict:
             "components": components,
             "message": "知识检索依赖就绪" if ready else "知识检索依赖不可用",
         },
+        "chat": chat,
+    }
+
+
+async def _chat_readiness() -> dict:
+    components: dict[str, bool] = {}
+
+    async def ensure_chat_schema() -> None:
+        from sqlalchemy import inspect
+
+        from app.db.mysql_session import AsyncSessionFactory
+
+        required = {
+            "chat_turns",
+            "chat_runs",
+            "chat_tool_executions",
+            "chat_run_events",
+            "chat_outbox_events",
+        }
+        async with AsyncSessionFactory() as session:
+            tables = await session.run_sync(
+                lambda sync: set(inspect(sync.connection()).get_table_names())
+            )
+        missing = required - tables
+        if missing:
+            raise RuntimeError(f"missing durable chat tables: {sorted(missing)}")
+
+    async def ensure_chat_rabbit() -> None:
+        connection = await aio_pika.connect_robust(settings.rabbitmq_url)
+        try:
+            channel = await connection.channel()
+            await declare_chat_topology(channel)
+        finally:
+            await connection.close()
+
+    async def ensure_checkpoint_postgres() -> None:
+        import psycopg
+
+        connection = await psycopg.AsyncConnection.connect(
+            settings.checkpoint_postgres_url
+        )
+        try:
+            await connection.execute("SELECT 1")
+        finally:
+            await connection.close()
+
+    await _probe("mysql_chat_schema", components, ensure_chat_schema)
+    await _probe("rabbitmq", components, ensure_chat_rabbit)
+    await _probe("checkpoint_postgres", components, ensure_checkpoint_postgres)
+    ready = all(components.values())
+    return {
+        "ready": ready,
+        "components": components,
+        "message": "聊天执行依赖就绪" if ready else "聊天执行依赖不可用",
     }
 
 

@@ -1,4 +1,4 @@
-/* Cookie-authenticated chat. No client-supplied identity or conversation history. */
+/* Cookie-authenticated chat. POST creates a durable Run; EventSource only observes. */
 (() => {
   class RequestScope {
     constructor() { this.controller = new AbortController(); }
@@ -47,6 +47,17 @@
 
   const $ = (id) => document.getElementById(id);
   const scope = new RequestScope();
+
+  const EVENT_TYPES = [
+    'run.queued', 'run.started', 'run.recovering', 'run.cancelling',
+    'run.completed', 'run.failed', 'run.cancelled', 'run.requires_attention',
+    'response.started', 'response.restarted', 'response.completed',
+    'text.delta', 'text.reset',
+    'tool.started', 'tool.completed', 'tool.failed', 'tool.requires_attention',
+  ];
+  const ACTIVE = new Set(['queued', 'running', 'recovering', 'cancelling']);
+  const TERMINAL = new Set(['completed', 'failed', 'cancelled', 'requires_attention']);
+
   let selected = null;
   let records = [];
   let conversations = [];
@@ -55,22 +66,52 @@
   let sending = false;
   let busy = false;
   let provisional = null;
+  let activeRun = null;
+  let lastTurn = null;
+  let source = null;
+  let lastSeq = 0;
+  let pendingKey = null;
+  let pendingContent = null;
 
   function status(text, error = false) {
     $('chat-status').textContent = text;
     $('chat-status').classList.toggle('error', error);
   }
 
+  function isActive(run) {
+    return Boolean(run && ACTIVE.has(run.status));
+  }
+
+  function canRetry() {
+    return Boolean(
+      lastTurn && lastTurn.latest_run && TERMINAL.has(lastTurn.latest_run.status) && !busy,
+    );
+  }
+
   function controls() {
-    $('chat-send').disabled = sending || busy;
-    $('chat-input').disabled = sending || busy;
+    const locked = sending || busy;
+    $('chat-send').disabled = locked;
+    $('chat-input').disabled = locked;
     $('chat-new').disabled = sending;
     $('chat-older').hidden = before === null;
-    $('chat-older').disabled = sending;
+    $('chat-older').disabled = locked;
     $('chat-more').hidden = nextOffset === null;
-    $('chat-more').disabled = sending;
-    $('chat-refresh').disabled = sending;
-    $('chat-conversations').querySelectorAll('button').forEach((b) => { b.disabled = sending; });
+    $('chat-more').disabled = locked;
+    $('chat-refresh').disabled = locked;
+    $('chat-stop').hidden = !isActive(activeRun);
+    $('chat-stop').disabled = !isActive(activeRun);
+    $('chat-retry').hidden = !canRetry();
+    $('chat-retry').disabled = !canRetry();
+    $('chat-retry').textContent = lastTurn?.latest_run?.status === 'completed'
+      ? '重新生成' : '重试';
+    $('chat-conversations').querySelectorAll('button').forEach((b) => { b.disabled = locked; });
+  }
+
+  function newKey() {
+    if (globalThis.crypto && typeof globalThis.crypto.randomUUID === 'function') {
+      return globalThis.crypto.randomUUID();
+    }
+    return `chat-${Date.now()}-${Math.random().toString(16).slice(2)}`;
   }
 
   async function request(url, options = {}, token = scope.capture()) {
@@ -115,13 +156,14 @@
       const content = document.createElement(tool ? 'pre' : 'div');
       content.textContent = row.tool_calls?.length ? JSON.stringify(row.tool_calls, null, 2) : row.content;
       node.append(content);
-      if (row.status !== 'complete') {
+      if (row.status && row.status !== 'complete') {
         const badge = document.createElement('small');
-        badge.textContent = row.status === 'failed' ? '本轮未完成' : '本轮进行中 / 尚未确认完成';
+        badge.textContent = row.status === 'failed' ? '本轮未完成' : '发送中 / 尚未确认';
         node.append(badge);
       }
       root.append(node);
     }
+    scrollToBottom();
   }
 
   function renderConversations() {
@@ -141,8 +183,175 @@
     controls();
   }
 
+  function scrollToBottom() {
+    const root = $('chat-messages');
+    root.scrollTop = root.scrollHeight;
+  }
+
   function showError(error) {
     if (error.name !== 'AbortError') status(error.message || '网络请求失败', true);
+  }
+
+  function clearProvisional() {
+    if (provisional && provisional.parentNode) provisional.remove();
+    provisional = null;
+  }
+
+  function ensureProvisional() {
+    if (!provisional) {
+      provisional = document.createElement('article');
+      provisional.className = 'chat-message assistant streaming';
+      provisional.setAttribute('aria-label', '助手正在回复');
+      $('chat-messages').append(provisional);
+    }
+    return provisional;
+  }
+
+  function closeSource() {
+    if (source) {
+      source.close();
+      source = null;
+    }
+  }
+
+  function setRun(run) {
+    activeRun = run;
+    busy = isActive(run);
+    controls();
+  }
+
+  function subscribe(run, after = 0) {
+    closeSource();
+    if (typeof EventSource === 'undefined') {
+      status('当前浏览器不支持事件流', true);
+      return;
+    }
+    setRun(run);
+    lastSeq = after || 0;
+    const url = run.events_url + (lastSeq ? `?after=${lastSeq}` : '');
+    const es = new EventSource(url, { withCredentials: true });
+    source = es;
+    es.onopen = () => { if (source === es) status('已连接，正在接收执行事件…'); };
+    es.onerror = () => {
+      if (source !== es) return;
+      status('观察连接中断，正在自动重连；执行不会因此停止…', true);
+      window.setTimeout(() => checkRun(es), 2500);
+    };
+    for (const type of EVENT_TYPES) {
+      es.addEventListener(type, (message) => {
+        if (source !== es) return;
+        let data = {};
+        try { data = JSON.parse(message.data); } catch { data = {}; }
+        if (message.lastEventId) lastSeq = Number(message.lastEventId) || lastSeq;
+        handleEvent(type, data);
+      });
+    }
+  }
+
+  async function checkRun(expectedSource) {
+    if (!activeRun || source !== expectedSource) return;
+    const token = scope.capture();
+    try {
+      const response = await request(
+        `/api/v1/chat/runs/${encodeURIComponent(activeRun.run_id)}`, {}, token,
+      );
+      const run = await response.json();
+      if (!scope.current(token) || source !== expectedSource) return;
+      if (!isActive(run)) finishRun(`run.${run.status}`, run);
+    } catch (error) {
+      showError(error);
+    }
+  }
+
+  function handleEvent(type, data) {
+    if (type === 'text.delta') {
+      ensureProvisional().textContent += data.delta || '';
+      scrollToBottom();
+      return;
+    }
+    if (type === 'text.reset') {
+      clearProvisional();
+      return;
+    }
+    if (type === 'response.completed') {
+      if (data.content) {
+        ensureProvisional().textContent = data.content;
+      } else {
+        clearProvisional();
+      }
+      status(data.tool_calls ? '模型准备调用工具…' : '正在生成回答…');
+      return;
+    }
+    if (type === 'response.started') {
+      clearProvisional();
+      status('正在生成回答…');
+      return;
+    }
+    if (type === 'response.restarted') {
+      clearProvisional();
+      status('执行已恢复，重新生成回答…');
+      return;
+    }
+    if (type === 'tool.started') {
+      status(`正在调用工具 ${data.tool_name || ''}…`);
+      return;
+    }
+    if (type === 'tool.completed') {
+      status(`工具 ${data.tool_name || ''} 已完成，继续回答…`);
+      return;
+    }
+    if (type === 'tool.failed' || type === 'tool.requires_attention') {
+      status(`工具 ${data.tool_name || ''} 未成功：${data.code || '需要人工核对'}`, true);
+      return;
+    }
+    if (type === 'run.queued') {
+      status('已排队，等待 Worker 领取…');
+      return;
+    }
+    if (type === 'run.started') {
+      status('Worker 已领取，正在执行…');
+      return;
+    }
+    if (type === 'run.recovering') {
+      status('执行异常中断，Worker 正在恢复同一个 Run…');
+      return;
+    }
+    if (type === 'run.cancelling') {
+      status('正在停止，等待安全边界…');
+      return;
+    }
+    if (type.startsWith('run.') && TERMINAL.has(type.slice(4))) {
+      finishRun(type, data);
+    }
+  }
+
+  async function finishRun(type, data) {
+    closeSource();
+    const state = type.slice(4);
+    clearProvisional();
+    activeRun = { ...(activeRun || {}), ...data, status: data.status || state };
+    busy = false;
+    status(
+      state === 'completed' ? '回复已保存。'
+        : state === 'cancelled' ? '已停止。可以重试或继续提问。'
+        : state === 'requires_attention' ? '执行需要人工核对，已停止自动重试。'
+        : `本轮未完成${data.error?.message ? `：${data.error.message}` : '。'}`,
+      state !== 'completed',
+    );
+    controls();
+    await reloadConversation();
+  }
+
+  async function reloadConversation() {
+    if (!selected) return;
+    const token = scope.capture();
+    try {
+      await loadMessages();
+      await loadConversations();
+    } catch (error) {
+      if (scope.current(token)) showError(error);
+    }
+    if (scope.current(token)) controls();
   }
 
   async function loadConversations(append = false) {
@@ -156,6 +365,36 @@
     renderConversations();
   }
 
+  async function loadTurnState() {
+    const token = scope.capture();
+    const response = await request(
+      `/api/v1/chat/conversations/${encodeURIComponent(selected)}/turns?limit=1`, {}, token,
+    );
+    const data = await response.json();
+    if (!scope.current(token)) return;
+    lastTurn = data.items[0] || null;
+    const run = lastTurn?.latest_run || null;
+    if (isActive(run)) {
+      subscribe(run, run.last_event_seq || 0);
+      status(`执行中 · ${run.status}${run.attempt_no > 1 ? ` · 第 ${run.attempt_no} 次执行` : ''}`);
+    } else {
+      closeSource();
+      setRun(run);
+      if (run) {
+        status(
+          run.status === 'completed' ? '上一轮已完成。'
+            : run.status === 'cancelled' ? '上一轮已停止，可以重试。'
+            : run.status === 'requires_attention' ? '上一轮需要人工核对。'
+            : `上一轮未完成${run.error?.message ? `：${run.error.message}` : '。'}`,
+          run.status !== 'completed',
+        );
+      } else {
+        status(busy ? '会话有未完成的执行。' : '已读取保存的消息');
+      }
+    }
+    controls();
+  }
+
   async function loadMessages(older = false) {
     if (!selected) return;
     const token = scope.capture();
@@ -165,19 +404,22 @@
     if (!scope.current(token)) return;
     records = older ? [...data.items, ...records] : data.items;
     before = data.next_before;
-    busy = data.conversation.busy;
     $('chat-title').textContent = data.conversation.title;
-    status(busy ? '会话有未完成的执行，可刷新查看状态或新建会话。' : '已读取保存的消息');
     renderMessages();
+    if (!older) await loadTurnState();
     controls();
   }
 
   async function openConversation(id) {
     scope.reset();
+    closeSource();
     selected = id;
     records = [];
     before = null;
     busy = false;
+    activeRun = null;
+    lastTurn = null;
+    clearProvisional();
     renderMessages();
     renderConversations();
     status('正在读取会话…');
@@ -197,11 +439,13 @@
   async function send(event) {
     event.preventDefault();
     const content = $('chat-input').value.trim();
-    if (!content || sending || busy) return;
-    const initialToken = scope.capture();
+    if (!content || sending || busy || isActive(activeRun)) return;
+    const token = scope.capture();
     sending = true;
     controls();
-    let token = initialToken;
+    const key = pendingKey && pendingContent === content ? pendingKey : newKey();
+    pendingKey = key;
+    pendingContent = content;
     try {
       if (!selected) {
         const response = await request('/api/v1/chat/conversations', { method: 'POST' }, token);
@@ -215,60 +459,102 @@
       $('chat-input').value = '';
       records.push({ role: 'user', content, status: 'pending' });
       renderMessages();
-      status('正在生成回复…');
-      const response = await request(`/api/v1/chat/conversations/${encodeURIComponent(selected)}/messages`,
-        { method: 'POST', body: JSON.stringify({ content }) }, token);
-      await readEvents(response, (kind, data) => {
-        if (!scope.current(token)) return;
-        if (kind === 'delta') {
-          if (!provisional) {
-            provisional = document.createElement('article');
-            provisional.className = 'chat-message assistant streaming';
-            provisional.setAttribute('aria-label', '助手正在回复');
-            $('chat-messages').append(provisional);
-          }
-          provisional.textContent += data.text;
-        } else if (kind === 'message') {
-          provisional = null;
-          records.push(data);
-          renderMessages();
-          status(data.role === 'tool' ? '已收到工具结果，正在继续回答…' : '正在处理…');
-        } else if (kind === 'done') {
-          records.forEach((row) => { if (row.status === 'pending') row.status = 'complete'; });
-          renderMessages();
-          status('回复已保存');
-        }
-        const root = $('chat-messages');
-        root.scrollTop = root.scrollHeight;
-      });
-      if (scope.current(token)) {
-        await loadMessages();
-        await loadConversations();
-        if (scope.current(token)) status('回复已保存');
-      }
+      status('已提交，正在创建这一轮执行…');
+      const response = await request(
+        `/api/v1/chat/conversations/${encodeURIComponent(selected)}/messages`,
+        {
+          method: 'POST',
+          headers: { 'Idempotency-Key': key },
+          body: JSON.stringify({ content }),
+        },
+        token,
+      );
+      const run = await response.json();
+      if (!scope.current(token)) return;
+      pendingKey = null;
+      pendingContent = null;
+      sending = false;
+      records.forEach((row) => { if (row.status === 'pending') row.status = 'complete'; });
+      activeRun = run;
+      busy = isActive(run);
+      status('已排队，等待 Worker 领取…');
+      controls();
+      subscribe(run, 0);
+      await loadConversations();
     } catch (error) {
       if (scope.current(token)) {
-        records.forEach((r) => { if (r.status === 'pending') r.status = 'failed'; });
+        records.forEach((row) => { if (row.status === 'pending') row.status = 'failed'; });
         renderMessages();
         showError(error);
       }
     } finally {
       if (scope.current(token)) {
         sending = false;
-        provisional = null;
         controls();
       }
     }
   }
 
+  async function stopRun() {
+    if (!activeRun) return;
+    const token = scope.capture();
+    status('正在发送停止请求…');
+    try {
+      await request(
+        `/api/v1/chat/runs/${encodeURIComponent(activeRun.run_id)}/cancel`,
+        { method: 'POST' },
+        token,
+      );
+      if (!scope.current(token)) return;
+      status('已请求停止，等待安全边界…');
+    } catch (error) {
+      showError(error);
+    }
+  }
+
+  async function retryRun() {
+    if (!lastTurn || !lastTurn.latest_run) return;
+    const previous = lastTurn.latest_run.status;
+    const reason = previous === 'cancelled' ? 'cancel_retry'
+      : previous === 'completed' ? 'regenerate' : 'failure_retry';
+    const token = scope.capture();
+    try {
+      const response = await request(
+        `/api/v1/chat/turns/${encodeURIComponent(lastTurn.turn_id)}/runs`,
+        { method: 'POST', body: JSON.stringify({ trigger_reason: reason }) },
+        token,
+      );
+      const run = await response.json();
+      if (!scope.current(token)) return;
+      clearProvisional();
+      status('已重新排队…');
+      subscribe(run, 0);
+      await loadMessages();
+    } catch (error) {
+      showError(error);
+    }
+  }
+
   function reset() {
     scope.reset();
-    selected = null; records = []; conversations = []; before = null; nextOffset = null;
-    sending = false; busy = false; provisional = null;
+    closeSource();
+    selected = null;
+    records = [];
+    conversations = [];
+    before = null;
+    nextOffset = null;
+    sending = false;
+    busy = false;
+    provisional = null;
+    activeRun = null;
+    lastTurn = null;
+    pendingKey = null;
+    pendingContent = null;
     $('chat-input').value = '';
     $('chat-title').textContent = '售后助手';
     status('新建或选择会话开始');
-    renderMessages(); renderConversations();
+    renderMessages();
+    renderConversations();
   }
 
   document.addEventListener('DOMContentLoaded', () => {
@@ -277,9 +563,15 @@
     $('chat-older').addEventListener('click', () => loadMessages(true).catch(showError));
     $('chat-more').addEventListener('click', () => loadConversations(true).catch(showError));
     $('chat-refresh').addEventListener('click', () => loadMessages().catch(showError));
+    $('chat-stop').addEventListener('click', () => stopRun().catch(showError));
+    $('chat-retry').addEventListener('click', () => retryRun().catch(showError));
     reset();
   });
-  document.addEventListener('business:ready', () => { reset(); loadConversations().catch(showError); });
+  document.addEventListener('business:ready', () => {
+    reset();
+    loadConversations().catch(showError);
+  });
   document.addEventListener('auth:logged-out', reset);
   document.addEventListener('auth:unauthorized', reset);
+  window.addEventListener('beforeunload', closeSource);
 })();

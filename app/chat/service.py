@@ -1,15 +1,9 @@
-import asyncio
-import json
-import logging
+"""HTTP-facing projections for chat conversations, turns and runs."""
 
-from sqlalchemy import select
+from __future__ import annotations
 
-from app.business.errors import Unavailable
-from app.chat import store
-from app.db.mysql_models import ModelConfiguration
-from app.db.mysql_session import AsyncSessionFactory
-
-logger = logging.getLogger(__name__)
+from app.business.utils import iso_datetime
+from app.chat.contracts import SETTLED_RUN_STATUSES, RunStatus
 
 
 def message_payload(row):
@@ -17,13 +11,14 @@ def message_payload(row):
         "id": row.id,
         "sequence": row.sequence,
         "turn_id": row.turn_id,
+        "run_id": row.run_id,
         "role": row.role,
         "content": row.content,
         "tool_calls": row.tool_calls,
         "tool_call_id": row.tool_call_id,
         "tool_name": row.tool_name,
         "status": row.status,
-        "created_at": row.created_at.isoformat(),
+        "created_at": iso_datetime(row.created_at),
     }
 
 
@@ -32,96 +27,57 @@ def conversation_payload(row):
         "id": row.id,
         "title": row.title,
         "busy": row.active_turn is not None,
-        "updated_at": row.updated_at.isoformat(),
+        "active_turn_id": row.active_turn,
+        "updated_at": iso_datetime(row.updated_at),
     }
 
 
-async def prepare(db, principal, conversation_id):
-    try:
-        from app.chat.agent import build_agent, model_from_configuration, restore_messages
-    except ImportError as exc:
-        raise Unavailable(
-            "聊天依赖未安装，请安装项目 agent 依赖", code="CHAT_DEPENDENCY_MISSING"
-        ) from exc
-    configs = list(
-        (
-            await db.execute(
-                select(ModelConfiguration).where(ModelConfiguration.is_default.is_(True))
-            )
-        ).scalars()
-    )
-    if len(configs) != 1:
-        raise Unavailable("请管理员设置一个默认聊天模型", code="CHAT_MODEL_MISSING")
-    model = model_from_configuration(configs[0])
-    history = restore_messages(await store.history(db, conversation_id))
-    return build_agent(model, principal), history
+def run_payload(row):
+    settled = row.status in SETTLED_RUN_STATUSES
+    return {
+        "run_id": row.id,
+        "turn_id": row.turn_id,
+        "status": row.status,
+        "attempt_no": row.attempt_no,
+        "trigger_reason": row.trigger_reason,
+        "created_at": iso_datetime(row.created_at),
+        "queued_at": iso_datetime(row.queued_at),
+        "started_at": iso_datetime(row.started_at),
+        "finished_at": iso_datetime(row.finished_at),
+        "error": (
+            {"code": row.error_code, "message": row.error_message}
+            if row.error_code
+            else None
+        ),
+        "can_cancel": row.status
+        in (RunStatus.QUEUED, RunStatus.RUNNING, RunStatus.RECOVERING),
+        "can_retry": settled,
+        "last_event_seq": max(0, (row.next_event_seq or 1) - 1),
+        "events_url": f"/api/v1/chat/runs/{row.id}/events",
+    }
 
 
-async def agent_events(agent, history):
-    from app.chat.agent import stream_agent
+def turn_payload(turn, latest_run=None):
+    return {
+        "turn_id": turn.id,
+        "conversation_id": turn.conversation_id,
+        "turn_no": turn.turn_no,
+        "status": turn.status,
+        "user_message_id": turn.user_message_id,
+        "latest_run_id": turn.latest_run_id,
+        "active_run_id": turn.active_run_id,
+        "run_count": turn.run_count,
+        "created_at": iso_datetime(turn.created_at),
+        "closed_at": iso_datetime(turn.closed_at),
+        "latest_run": run_payload(latest_run) if latest_run is not None else None,
+    }
 
-    async for event in stream_agent(agent, history):
-        yield event
 
-
-def sse(kind, data):
-    return f"event: {kind}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
-
-
-async def stream_reply(conversation_id, turn_id, content, agent, history):
-    from langchain_core.messages import HumanMessage
-
-    succeeded = False
-    pending = set()
-    final_answer = False
-    try:
-        yield sse("start", {"conversation_id": conversation_id, "turn_id": turn_id})
-        async for kind, data in agent_events(agent, [*history, HumanMessage(content=content)]):
-            if kind == "message":
-                if data["role"] == "assistant":
-                    if pending:
-                        raise ValueError("Missing tool results")
-                    calls = data.get("tool_calls") or []
-                    ids = [call["id"] for call in calls]
-                    if len(set(ids)) != len(ids):
-                        raise ValueError("Duplicate tool call ids")
-                    pending.update(ids)
-                    final_answer = not calls and bool(data["content"].strip())
-                elif data["role"] == "tool":
-                    pending.remove(data["tool_call_id"])
-                async with AsyncSessionFactory() as db:
-                    row = await store.append_message(db, conversation_id, turn_id, **data)
-                    data = message_payload(row)
-            yield sse(kind, data)
-        if pending or not final_answer:
-            raise ValueError("Incomplete model turn")
-        async with AsyncSessionFactory() as db:
-            await store.finish_turn(db, conversation_id, turn_id, succeeded=True)
-        succeeded = True
-        yield sse("done", {"conversation_id": conversation_id, "turn_id": turn_id})
-    except asyncio.CancelledError:
-        raise
-    except Exception as exc:
-        # Provider exception strings can contain credentials or response content.
-        logger.warning(
-            "Chat failed conversation=%s turn=%s error_type=%s",
-            conversation_id,
-            turn_id,
-            type(exc).__name__,
-        )
-        yield sse(
-            "error",
-            {
-                "code": "CHAT_FAILED",
-                "message": "本轮回复未完成，请稍后重新发送。已保存的消息可在历史中查看。",
-            },
-        )
-    finally:
-        if not succeeded:
-            try:
-                async with AsyncSessionFactory() as db:
-                    await store.finish_turn(db, conversation_id, turn_id, succeeded=False)
-            except Exception:
-                logger.warning(
-                    "Chat cleanup incomplete conversation=%s turn=%s", conversation_id, turn_id
-                )
+def submission_payload(submission):
+    return {
+        "conversation_id": submission.conversation_id,
+        "turn_id": submission.turn_id,
+        "run_id": submission.run_id,
+        "status": submission.status,
+        "events_url": f"/api/v1/chat/runs/{submission.run_id}/events",
+    }
